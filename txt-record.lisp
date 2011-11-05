@@ -117,10 +117,10 @@ string, and VALUE, if present, is a vector with elements of type
     (parse 0)))
 
 
-(defun bytes-to-string (sequence &key (start 0) (end (length sequence)))
+(defun bytes-to-string (sequence &key (start 0) (end (length sequence)) (external-format :utf-8))
   "Converts a sequence of bytes (unsigned-byte 8) to a string using
 the implementation's default character encoding."
-  (ef:decode-external-string sequence :utf-8 :start start :end end))
+  (ef:decode-external-string sequence external-format :start start :end end))
 
 (defun string-to-bytes (string)
   "Converts a string to a sequence of bytes (unsigned-byte 8) using

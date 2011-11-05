@@ -12,4 +12,6 @@
                (:file "service-handle")
                (:file "record-handle")
                (:file "dispatcher")
+               (:file "constants")
+               (:file "foreign")
                (:file "zeroconf")))

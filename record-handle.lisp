@@ -18,4 +18,3 @@
    (handle-ref record-handle)
    0)
   (setf (slot-value record-handle 'ref) nil))
-
