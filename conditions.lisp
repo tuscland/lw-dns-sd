@@ -65,59 +65,59 @@ raised."
 ;; Now let's define some error classes.
 
 
-(def-dns-sd-error dns-sd-unknown-error
+(def-dns-sd-error unknown-error
                   -65537
                   "Unknown error (is the DNS Service Discovery system daemon running?)")
 
-(def-dns-sd-error dns-sd-no-such-name-error
+(def-dns-sd-error no-such-name-error
                   -65538
                   "No such name error")
 
-(def-dns-sd-error dns-sd-no-memory-error
+(def-dns-sd-error no-memory-error
                   -65539
                   "No memory error")
 
-(def-dns-sd-error dns-sd-bad-param-error
+(def-dns-sd-error bad-param-error
                   -65540
                   "Bad parameter error")
 
-(def-dns-sd-error dns-sd-bad-reference-error
+(def-dns-sd-error bad-reference-error
                   -65541
                   "Bad reference error")
 
-(def-dns-sd-error dns-sd-bad-state-error
+(def-dns-sd-error bad-state-error
                   -65542
                   "Bad state error")
 
-(def-dns-sd-error dns-sd-bad-flags-error
+(def-dns-sd-error bad-flags-error
                   -65543
                   "Bad flags error")
 
-(def-dns-sd-error dns-sd-unsupported-error
+(def-dns-sd-error unsupported-error
                   -65544
                   "Unsupported error")
 
-(def-dns-sd-error dns-sd-not-initialized-error
+(def-dns-sd-error not-initialized-error
                   -65545
                   "Not initialized error")
 
-(def-dns-sd-error dns-sd-already-registered-error
+(def-dns-sd-error already-registered-error
                   -65547
                   "Already registered error")
 
-(def-dns-sd-error dns-sd-name-conflict-error
+(def-dns-sd-error name-conflict-error
                   -65548
                   "Name conflict error")
 
-(def-dns-sd-error dns-sd-invalid-error
+(def-dns-sd-error invalid-error
                   -65549
                   "Invalid error")
 
-(def-dns-sd-error dns-sd-incompatible-error
+(def-dns-sd-error incompatible-error
                   -65551
                   "Incompatible error")
 
-(def-dns-sd-error dns-sd-bad-interface-index-error
+(def-dns-sd-error bad-interface-index-error
                   -65552
                   "Bad interface index error")
 
@@ -135,9 +135,3 @@ raised."
    (lambda (condition stream)
      (format stream "The service ~S has not been published."
 	     (service-not-published-error-service condition)))))
-
-(define-condition socket-fd-error (dns-sd-error)
-  ((oid :initarg :oid :initform nil :accessor socket-fd-error-oid))
-  (:report
-   (lambda (condition stream)
-     (format stream "DNS-SD OID ~S has no socket file descriptor." (socket-fd-error-oid condition)))))

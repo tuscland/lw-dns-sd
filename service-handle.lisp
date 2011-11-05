@@ -25,7 +25,7 @@
     :reader service-handle-cancel-after-reply-p
     :initform nil))
   (:default-initargs
-   :direction :io))
+   :direction :input))
 
 (defmethod shared-initialize :after ((self service-handle) slot-names &key)
   (setf (comm:socket-stream-socket self)

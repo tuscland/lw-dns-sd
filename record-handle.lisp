@@ -3,12 +3,12 @@
 (defclass record-handle (handle)
   ())
 
-(defmethod record-add ((service-handle service-handle) rrtype data ttl)
+(defmethod record-add ((service-handle service-handle) record)
   )
 
 (defmethod record-update ((service-handle service-handle)
                           (record-handle record-handle)
-                          rrtype data ttl)
+                          record)
   )
 
 (defmethod record-remove ((service-handle service-handle)

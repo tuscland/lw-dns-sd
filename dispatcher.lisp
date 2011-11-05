@@ -111,3 +111,9 @@
 
 (defmethod cancel ((self service-handle))
   (dispatcher-remove-handle *dispatcher* self))
+
+(defun start ()
+  (dispatcher-start *dispatcher*))
+
+(defun stop ()
+  (dispatcher-stop *dispatcher*))

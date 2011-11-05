@@ -19,18 +19,15 @@
   data
   ttl)
 
-
 (defstruct domain
   (interface-index 0)
   name
   defaultp)
 
-
 (defclass handle ()
   ((ref
     :initarg :ref
     :reader handle-ref)))
-
 
 (defclass responder ()
   ((callback-function

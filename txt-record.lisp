@@ -1,9 +1,5 @@
 (in-package #:zeroconf)
 
-;; --------------------------------------------------------------------------------
-;; TXT RECORD
-;; --------------------------------------------------------------------------------
-
 ;; Section 6.1 of
 ;; http://files.dns-sd.org/draft-cheshire-dnsext-dns-sd.txt claims
 ;; that "when using Multicast DNS [mDNS] the maximum packet size is
