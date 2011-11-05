@@ -2,8 +2,8 @@
 
 
 (defclass dispatcher ()
-  ((operations
-    :accessor dispatcher-operations
+  ((handles
+    :accessor dispatcher-handles
     :initform nil)
    (process
     :accessor dispatcher-process
@@ -16,28 +16,28 @@
   (mp:process-alive-p
    (dispatcher-process self)))
 
-(defmethod %dispatcher-add-operation ((self dispatcher) operation)
-  (push operation
-        (dispatcher-operations self)))
+(defmethod %dispatcher-add-handle ((self dispatcher) handle)
+  (push handle
+        (dispatcher-handles self)))
 
-(defmethod %dispatcher-remove-operation ((self dispatcher) operation)
-  (setf (dispatcher-operations self)
-        (remove operation
-                (dispatcher-operations self)))
-  (%cancel operation))
+(defmethod %dispatcher-remove-handle ((self dispatcher) handle)
+  (setf (dispatcher-handles self)
+        (remove handle
+                (dispatcher-handles self)))
+  (%cancel handle))
 
 (defmethod %dispatcher-cleanup (process (self dispatcher))
-  (dolist (operation (dispatcher-operations self))
-    (%dispatcher-remove-operation self operation)))
+  (dolist (handle (dispatcher-handles self))
+    (%dispatcher-remove-handle self handle)))
 
-(defmethod dispatcher-handle-message ((self dispatcher) message)
+(defmethod dispatcher-process-message ((self dispatcher) message)
   (let ((command (car message))
-        (operation (cdr message)))
+        (handle (cdr message)))
     (ecase command
       (:add
-       (%dispatcher-add-operation self operation))
+       (%dispatcher-add-handle self handle))
       (:remove
-       (%dispatcher-remove-operation self operation))
+       (%dispatcher-remove-handle self handle))
       (:stop       
        (mp:process-kill
         (mp:get-current-process))))))
@@ -46,16 +46,16 @@
   (mp:ensure-process-cleanup `(%dispatcher-cleanup ,self))
   (loop with mailbox = (mp:process-mailbox
                         (mp:get-current-process))
-        for operation = (sys:wait-for-input-streams-returning-first
-                         (dispatcher-operations self)
-                         :wait-reason "Waiting for Zeroconf events"
-                         :wait-function #'(lambda ()
-                                            (mp:mailbox-not-empty-p mailbox)))
-        do (if operation
-               (when (operation-process-result operation)
-                 (%dispatcher-remove-operation self operation))
-             (dispatcher-handle-message self
-                                        (mp:mailbox-read mailbox)))
+        for handle = (sys:wait-for-input-streams-returning-first
+                      (dispatcher-handles self)
+                      :wait-reason "Waiting for Zeroconf events"
+                      :wait-function #'(lambda ()
+                                         (mp:mailbox-not-empty-p mailbox)))
+        do (if handle
+               (when (service-handle-process-result handle)
+                 (%dispatcher-remove-handle self handle))
+             (dispatcher-process-message self
+                                         (mp:mailbox-read mailbox)))
         while t))
 
 (defmethod dispatcher-send-message ((self dispatcher) message)
@@ -83,31 +83,31 @@
                        (not
                         (dispatcher-running-p self)))))
 
-(defmethod dispatcher-add-operation ((self dispatcher) operation)
-  (assert operation)
+(defmethod dispatcher-add-handle ((self dispatcher) handle)
+  (assert handle)
   (dispatcher-send-message self
-                                 (cons :add operation))
-  operation)
+                           (cons :add handle))
+  handle)
 
-(defmethod dispatcher-remove-operation ((self dispatcher) operation)
-  (assert operation)
+(defmethod dispatcher-remove-handle ((self dispatcher) handle)
+  (assert handle)
   (dispatcher-send-message self
-                                 (cons :remove operation)))
+                           (cons :remove handle)))
 
 (defmethod print-object ((self dispatcher) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (format stream
-            "(~:[STOPPED~;RUNNING~], ~[no~:;~:*~D~] pending operation~:P)"
+            "(~:[STOPPED~;RUNNING~], ~[no~:;~:*~D~] pending handle~:P)"
             (dispatcher-running-p self)
             (length
-             (dispatcher-operations self)))))
+             (dispatcher-handles self)))))
 
 
 
 (defvar *dispatcher* (make-instance 'dispatcher))
 
-(defmethod dispatch-operation ((self operation))
-  (dispatcher-add-operation *dispatcher* self))
+(defmethod dispatch ((self service-handle))
+  (dispatcher-add-handle *dispatcher* self))
 
-(defmethod cancel-operation ((self operation))
-  (dispatcher-remove-operation *dispatcher* self))
+(defmethod cancel ((self service-handle))
+  (dispatcher-remove-handle *dispatcher* self))

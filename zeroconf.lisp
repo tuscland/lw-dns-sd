@@ -43,6 +43,7 @@
 ;; --------------------------------------------------------------------------------
 
 (fli:define-opaque-pointer service-ref :void)
+(fli:define-opaque-pointer record-ref :void)
 
 (fli:define-foreign-type dnssd-string ()
   `(:ef-mb-string
@@ -108,6 +109,31 @@
                     ((sdref service-ref))
                     "DNSServiceProcessResult")
 
+(def-dnssd-function dns-service-add-record
+                    ((sdref service-ref)
+                     (rdref (:pointer record-ref))
+                     (flags flags-t)
+                     (rrtype :uint16)
+                     (rdlen :uint16)
+                     (data (:const (:pointer :void)))
+                     (ttl :uint32))
+                    "DNSServiceAddRecord")
+
+(def-dnssd-function dns-service-update-record
+                    ((sdref service-ref)
+                     (rdref record-ref)
+                     (flags flags-t)
+                     (rdlen :uint16)
+                     (data (:const (:pointer :void)))
+                     (ttl :uint32))
+                    "DNSServiceUpdateRecord")
+
+(def-dnssd-function dns-service-remove-record
+                    ((sdref service-ref)
+                     (rdref record-ref)
+                     (flags flags-t))
+                    "DNSServiceRemoveRecord")
+
 (def-dnssd-function dns-service-register
                     ((sdref (:pointer service-ref))
                      (flags flags-t)
@@ -118,7 +144,7 @@
                      (host (:reference-pass dnssd-string :allow-null t))
                      (port :uint16)
                      (txtlen :uint16)
-                     (txtrecord (:pointer (:const :void)))
+                     (txtrecord (:const (:pointer :void)))
                      (callback (:pointer :function))
                      (context (:pointer :void)))
                     "DNSServiceRegister")
@@ -134,10 +160,10 @@
      (domain (:reference-return dnssd-string :allow-null t))
      (context (:pointer :void)))
   (declare (ignore context sdref))
-  (with-bound-operation operation
-    (let ((service (operation-user-info operation)))
-      (operation-invoke-callback
-       operation
+  (with-bound-service-handle handle
+    (let ((service (service-handle-user-info handle)))
+      (service-handle-invoke-callback
+       handle
        error-code
        (flags->symbols '((+flag-add+ :add :conflict)) flags)
        (make-service :interface-index (service-interface-index service)
@@ -146,7 +172,7 @@
                      :domain domain
                      :host (service-host service)
                      :port (service-port service)
-                     :txt-record (service-txt-record service))))))
+                     :properties (service-properties service))))))
 
 (defparameter *service-register-reply-pointer*
   (fli:make-pointer :symbol-name '%dns-service-register-reply
@@ -175,9 +201,9 @@
                        (+flag-add+         :add         :remove)
                        (+flag-default+     :default     nil))
                      flags)))
-    (with-bound-operation operation
-      (operation-invoke-callback
-       operation
+    (with-bound-service-handle handle
+      (service-handle-invoke-callback
+       handle
        error-code
        symbols
        (make-domain :interface-index interface-index
@@ -211,9 +237,9 @@
      (domain (:reference-return dnssd-string))
      (context (:pointer :void)))
   (declare (ignore context sdref))
-  (with-bound-operation operation
-    (operation-invoke-callback
-     operation
+  (with-bound-service-handle handle
+    (service-handle-invoke-callback
+     handle
      error-code
      (flags->symbols '((+flag-more-coming+ :more-coming :finished)
                        (+flag-add+         :add         :remove))
@@ -263,10 +289,10 @@
   (declare (ignore context sdref))
   (let ((txt-record (fli-make-array-from-bytes txt-record-bytes
                                                txt-record-size)))
-    (with-bound-operation operation
-      (let ((service (operation-user-info operation)))
-        (operation-invoke-callback
-         operation
+    (with-bound-service-handle handle
+      (let ((service (service-handle-user-info handle)))
+        (service-handle-invoke-callback
+         handle
          error-code
          (flags->symbols '((+flag-more-coming+ :more-coming :finished))
                          flags)
@@ -277,7 +303,7 @@
                        :domain (service-domain service)
                        :host host
                        :port (ntohs port)
-                       :txt-record (parse-txt-record txt-record)))))))
+                       :properties (parse-txt-record txt-record)))))))
 
 (defparameter *service-resolve-reply-pointer*
   (fli:make-pointer :symbol-name '%dns-service-resolve-reply
@@ -319,9 +345,9 @@
   (declare (ignore context sdref))
   (let ((address (when (= error-code +no-err+)
                    (fli-sockaddr-to-string addr))))
-    (with-bound-operation operation
-      (operation-invoke-callback
-       operation
+    (with-bound-service-handle handle
+      (service-handle-invoke-callback
+       handle
        error-code
        (flags->symbols '((+flag-more-coming+ :more-coming :finished)
                          (+flag-add+         :add         :invalid))
@@ -351,9 +377,9 @@
   (when (service-host service)
     (check-type (service-host service) string))
   (check-type (service-port service) (integer 0))
-  (check-type (service-txt-record service) list)
+  (check-type (service-properties service) list)
   (let ((txt-record (build-txt-record
-                     (service-txt-record service))))
+                     (service-properties service))))
     (fli:with-dynamic-foreign-objects ((ptr service-ref))
       (fli:with-dynamic-lisp-array-pointer (txt-ptr txt-record)
         (dns-service-register ptr
@@ -371,14 +397,17 @@
                               txt-ptr
                               *service-register-reply-pointer*
                               nil))
-      (dispatch-operation
-       (make-instance 'operation
-                      :handle (fli:dereference ptr)
+      (dispatch
+       (make-instance 'service-handle
+                      :ref (fli:dereference ptr)
                       :responder self
                       :user-info (copy-service service))))))
 
+(defparameter *meta-query-service-type* "_services._dns-sd._udp.")
+
 (defmethod browse
-           ((self responder) type
+           ((self responder)
+            &optional (type *meta-query-service-type*)
             &key (interface-index 0) (domain nil))
   (check-type type string)
   (check-type interface-index (integer 0))
@@ -392,9 +421,9 @@
                         domain
                         *service-browse-reply-pointer*
                         nil)
-    (dispatch-operation
-     (make-instance 'operation
-                    :handle (fli:dereference ptr)
+    (dispatch
+     (make-instance 'service-handle
+                    :ref (fli:dereference ptr)
                     :responder self))))
 
 
@@ -418,10 +447,11 @@
                          (service-domain service)
                          *service-resolve-reply-pointer*
                          nil)
-    (dispatch-operation (make-instance 'operation
-                                       :handle (fli:dereference ptr)
-                                       :responder self
-                                       :cancel-after-reply t))))
+    (dispatch
+     (make-instance 'service-handle
+                    :ref (fli:dereference ptr)
+                    :responder self
+                    :cancel-after-reply t))))
 
 (defvar *enumerated-domain-flags* `((:registration . ,+flag-registration-domains+)
                                     (:browse       . ,+flag-browse-domains+)))
@@ -440,9 +470,9 @@
                                    interface-index
                                    *service-enumerate-domains-reply-pointer*
                                    nil)
-    (dispatch-operation
-     (make-instance 'operation
-                    :handle (fli:dereference ptr)
+    (dispatch
+     (make-instance 'service-handle
+                    :ref (fli:dereference ptr)
                     :responder self))))
 
 (defmethod query-record ((self responder) name record-type record-class interface-index)
@@ -459,8 +489,8 @@
                                hostname
                                *service-get-addr-info-reply-pointer*
                                nil)
-    (let ((operation (make-instance 'operation
-                                    :handle (fli:dereference ptr)
-                                    :responder self
-                                    :cancel-after-reply t)))
-      (dispatch-operation operation))))
+    (dispatch
+     (make-instance 'service-handle
+                    :ref (fli:dereference ptr)
+                    :responder self
+                    :cancel-after-reply t))))

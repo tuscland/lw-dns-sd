@@ -7,6 +7,9 @@
                (:file "network-utilities")
                (:file "conditions")
                (:file "txt-record")
-               (:file "operation")
+
+               (:file "common")
+               (:file "service-handle")
+               (:file "record-handle")
                (:file "dispatcher")
                (:file "zeroconf")))
