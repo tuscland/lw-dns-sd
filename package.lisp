@@ -18,6 +18,7 @@
            #:responder-callback-function
            #:responder-error-function
            #:service
+           #:service-name
            #:record
            #:domain
 
