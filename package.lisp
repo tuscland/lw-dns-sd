@@ -27,3 +27,6 @@
            #:stop
 
            #:dns-sd-error))
+
+(defpackage :zeroconf-user
+  (:use :zeroconf :cl))

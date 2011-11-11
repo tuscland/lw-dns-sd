@@ -45,13 +45,6 @@
              (mp:process-all-events))
         while t))
 
-(defmethod dispatcher-queue-event ((self dispatcher) event)
-  (unless (dispatcher-running-p self)
-    (error "Zeroconf Dispatcher is stopped."))
-  (mp:mailbox-send (mp:process-mailbox
-                    (dispatcher-process self))
-                   event))
-
 (defmethod dispatcher-start ((self dispatcher))
   (when (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already started."))
@@ -62,11 +55,11 @@
     (setf (dispatcher-process self) process)))
 
 (defmethod dispatcher-stop ((self dispatcher))
-  (unless (dispatcher-running-p self)
-    (error "Zeroconf Dispatcher is already stopped."))
-  (dispatcher-queue-event self #'(lambda ()
-                                   (mp:process-kill
-                                    (mp:get-current-process))))
+  (mp:process-send
+   (dispatcher-process self)
+   #'(lambda ()
+       (mp:process-kill
+        (mp:get-current-process))))
   (mp:process-wait "Waiting for Zeroconf Dispatcher to stop"
                    #'(lambda ()
                        (not
@@ -74,14 +67,16 @@
 
 (defmethod dispatcher-add-handle ((self dispatcher) handle)
   (assert handle)
-  (dispatcher-queue-event self
-                          (list '%dispatcher-add-handle self handle))
+  (mp:process-send
+   (dispatcher-process self)
+   `(%dispatcher-add-handle ,self ,handle))
   handle)
 
 (defmethod dispatcher-remove-handle ((self dispatcher) handle)
   (assert handle)
-  (dispatcher-queue-event self
-                          (list '%dispatcher-remove-handle self handle)))
+  (mp:process-send
+   (dispatcher-process self)
+   `(%dispatcher-remove-handle ,self ,handle)))
 
 (defmethod print-object ((self dispatcher) stream)
   (print-unreadable-object (self stream :type t :identity t)

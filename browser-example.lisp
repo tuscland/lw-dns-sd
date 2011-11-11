@@ -1,6 +1,3 @@
-(defpackage :zeroconf-user
-  (:use :zeroconf :cl))
-
 (in-package :zeroconf-user)
 
 
