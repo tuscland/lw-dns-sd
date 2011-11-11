@@ -85,6 +85,21 @@
   (not (null
         (browser-browse-handle self))))
 
+(defmethod browser-start ((self browser))
+  (setf (browser-browse-handle self)
+        (browse self "_osc._udp")))
+
+(defmethod browser-stop ((self browser))
+  (cancel (browser-browse-handle self))
+  (setf (browser-browse-handle self) nil))
+
+(defun browser-run (data browser)
+  (declare (ignore data))
+  (if (browser-running-p browser)
+      (browser-stop browser)
+    (browser-start browser))
+  (browser-update-interface browser))
+
 (defmethod browser-handle-zeroconf-callback
            ((self browser) handle flags service)
   (when (member :add flags)
@@ -104,7 +119,8 @@
 (defmethod browser-handle-zeroconf-error
            ((self browser) handle condition)
   (setf (capi:titled-object-message self)
-        (format nil "Error occured: ~A" condition)))
+        (format nil "Error occured: ~A" condition))
+  (browser-stop self))
 
 (defmethod browser-zeroconf-error
            ((self browser) handle condition)
@@ -117,21 +133,6 @@
   (capi:execute-with-interface self
                                'browser-handle-zeroconf-callback
                                self handle flags service))
-
-(defmethod browser-start ((self browser))
-  (setf (browser-browse-handle self)
-        (browse self "_osc._udp")))
-
-(defmethod browser-stop ((self browser))
-  (cancel (browser-browse-handle self))
-  (setf (browser-browse-handle self) nil))
-
-(defun browser-run (data browser)
-  (declare (ignore data))
-  (if (browser-running-p browser)
-      (browser-stop browser)
-    (browser-start browser))
-  (browser-update-interface browser))
 
 (defun test-browser ()
   (capi:display (make-instance 'browser)))

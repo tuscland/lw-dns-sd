@@ -30,18 +30,6 @@
   (dolist (handle (dispatcher-handles self))
     (%dispatcher-remove-handle self handle)))
 
-(defmethod dispatcher-process-message ((self dispatcher) message)
-  (let ((command (car message))
-        (handle (cdr message)))
-    (ecase command
-      (:add
-       (%dispatcher-add-handle self handle))
-      (:remove
-       (%dispatcher-remove-handle self handle))
-      (:stop       
-       (mp:process-kill
-        (mp:get-current-process))))))
-
 (defmethod dispatcher-loop ((self dispatcher))
   (mp:ensure-process-cleanup `(%dispatcher-cleanup ,self))
   (loop with mailbox = (mp:process-mailbox
@@ -54,16 +42,15 @@
         do (if handle
                (when (service-handle-process-result handle)
                  (%dispatcher-remove-handle self handle))
-             (dispatcher-process-message self
-                                         (mp:mailbox-read mailbox)))
+             (mp:process-all-events))
         while t))
 
-(defmethod dispatcher-send-message ((self dispatcher) message)
+(defmethod dispatcher-queue-event ((self dispatcher) event)
   (unless (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is stopped."))
   (mp:mailbox-send (mp:process-mailbox
                     (dispatcher-process self))
-                   message))
+                   event))
 
 (defmethod dispatcher-start ((self dispatcher))
   (when (dispatcher-running-p self)
@@ -77,7 +64,9 @@
 (defmethod dispatcher-stop ((self dispatcher))
   (unless (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already stopped."))
-  (dispatcher-send-message self (cons :stop nil))
+  (dispatcher-queue-event self #'(lambda ()
+                                   (mp:process-kill
+                                    (mp:get-current-process))))
   (mp:process-wait "Waiting for Zeroconf Dispatcher to stop"
                    #'(lambda ()
                        (not
@@ -85,14 +74,14 @@
 
 (defmethod dispatcher-add-handle ((self dispatcher) handle)
   (assert handle)
-  (dispatcher-send-message self
-                           (cons :add handle))
+  (dispatcher-queue-event self
+                          (list '%dispatcher-add-handle self handle))
   handle)
 
 (defmethod dispatcher-remove-handle ((self dispatcher) handle)
   (assert handle)
-  (dispatcher-send-message self
-                           (cons :remove handle)))
+  (dispatcher-queue-event self
+                          (list '%dispatcher-remove-handle self handle)))
 
 (defmethod print-object ((self dispatcher) stream)
   (print-unreadable-object (self stream :type t :identity t)
