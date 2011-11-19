@@ -17,8 +17,11 @@
            #:responder
            #:responder-callback-function
            #:responder-error-function
+
            #:service
+           #:make-service
            #:service-name
+
            #:record
            #:domain
 

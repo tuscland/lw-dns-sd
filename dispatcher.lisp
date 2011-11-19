@@ -39,7 +39,8 @@
                       :wait-reason "Waiting for Zeroconf events"
                       :wait-function #'(lambda ()
                                          (mp:mailbox-not-empty-p mailbox)))
-        do (if handle
+        do 
+        (if handle
                (when (service-handle-process-result handle)
                  (%dispatcher-remove-handle self handle))
              (mp:process-all-events))

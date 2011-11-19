@@ -23,6 +23,7 @@
     capi:button
     :selection-callback 'browser-run
     :reader browser-run-button)
+   #+cocoa
    (spinner
     capi:cocoa-view-pane
     :view-class "NSProgressIndicator"
@@ -32,7 +33,7 @@
   (:layouts
    (bottom-row
     capi:row-layout
-    '(run-button spinner))
+    '(run-button #+cocoa spinner))
    (main
     capi:column-layout
     '(services-list bottom-row)
@@ -56,14 +57,19 @@
            (browser-run-button self))
           (if running
               "Stop"
-            "Run"))
-    (objc:invoke
-     (capi:cocoa-view-pane-view
-      (browser-spinner self))
-     (if running
-         "startAnimation:"
-       "stopAnimation:") nil)))
+            "Run"))))
 
+#+cocoa
+(defmethod browser-update-interface
+           :after ((self browser))
+  (objc:invoke
+   (capi:cocoa-view-pane-view
+    (browser-spinner self))
+   (if running
+       "startAnimation:"
+     "stopAnimation:") nil))
+
+#+cocoa
 (defmethod browser-init-spinner (pane spinner)
   (declare (ignore pane))
   (setq spinner (objc:invoke spinner "init"))
