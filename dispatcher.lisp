@@ -49,7 +49,7 @@
 (defmethod dispatcher-start ((self dispatcher))
   (when (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already started."))
-  (let ((process (mp:process-run-function "DNS-SD Event Dispatcher"
+  (let ((process (mp:process-run-function "Zeroconf Event Dispatcher"
                                           '(:mailbox t)
                                           'dispatcher-loop
                                           self)))
