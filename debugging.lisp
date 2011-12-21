@@ -1,7 +1,7 @@
 (in-package #:zeroconf)
 
 
-(defparameter *debugging-enabled* t)
+(defparameter *debugging-enabled* nil)
 
 
 (defun get-debug-collector ()

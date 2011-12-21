@@ -51,20 +51,17 @@
     (error "Zeroconf Dispatcher is already started."))
   (let ((process (mp:process-run-function "Zeroconf Event Dispatcher"
                                           '(:mailbox t)
-                                          'dispatcher-loop
+                                          #'dispatcher-loop
                                           self)))
     (setf (dispatcher-process self) process)))
 
 (defmethod dispatcher-stop ((self dispatcher))
-  (mp:process-send
-   (dispatcher-process self)
-   #'(lambda ()
-       (mp:process-kill
-        (mp:get-current-process))))
-  (mp:process-wait "Waiting for Zeroconf Dispatcher to stop"
-                   #'(lambda ()
-                       (not
-                        (dispatcher-running-p self)))))
+  (let ((process (dispatcher-process self)))
+    (mp:process-send process
+                     #'(lambda ()
+                         (mp:process-kill
+                          (mp:get-current-process))))
+    (mp:process-join process)))
 
 (defmethod dispatcher-add-handle ((self dispatcher) handle)
   (assert handle)
