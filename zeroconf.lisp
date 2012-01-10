@@ -65,7 +65,6 @@
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
-                    :socket (dns-service-sockfd (fli:dereference ptr))
                     :responder responder))))
 
 
