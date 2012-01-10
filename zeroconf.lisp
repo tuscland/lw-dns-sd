@@ -1,7 +1,5 @@
 ;;;; zeroconf.lisp
-
 (in-package #:zeroconf)
-
 
 (defun daemon-version ()
   (fli:with-dynamic-foreign-objects ((result :uint32)
@@ -11,8 +9,9 @@
                               size)
     (fli:dereference result)))
 
-(defmethod register
-           ((self responder) service &key (no-auto-rename nil))
+(defun register (responder service
+                 &key (no-auto-rename nil))
+  (check-type responder responder)
   (check-type (service-interface-index service) (integer 0))
   (when (service-name service)
     (check-type (service-name service) string))
@@ -40,19 +39,17 @@
                                (service-port service))
                               (length txt-record)
                               txt-ptr
-                              *service-register-reply-pointer*
+                              (make-callable-pointer '%dns-service-register-reply)
                               nil))
       (dispatch
        (make-instance 'service-handle
                       :ref (fli:dereference ptr)
-                      :responder self
+                      :responder responder
                       :user-info (copy-service service))))))
 
-(defmethod browse
-           ((self responder)
-            type
-            &key (interface-index 0)
-                 (domain nil))
+(defun browse (responder type
+                         &key (interface-index 0) (domain nil))
+  (check-type responder responder)
   (check-type type string)
   (check-type interface-index (integer 0))
   (when domain
@@ -63,12 +60,13 @@
                         interface-index
                         type
                         domain
-                        *service-browse-reply-pointer*
+                        (make-callable-pointer '%dns-service-browse-reply)
                         nil)
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
-                    :responder self))))
+                    :socket (dns-service-sockfd (fli:dereference ptr))
+                    :responder responder))))
 
 
 (defmethod resolve ((self responder) service
@@ -89,7 +87,7 @@
                          (service-name service)
                          (service-type service)
                          (service-domain service)
-                         *service-resolve-reply-pointer*
+                         (make-callable-pointer '%dns-service-resolve-reply)
                          nil)
     (dispatch
      (make-instance 'service-handle
@@ -112,7 +110,7 @@
                                    (cdr
                                     (assoc domain *enumerated-domain-flags*))
                                    interface-index
-                                   *service-enumerate-domains-reply-pointer*
+                                   (make-callable-pointer '%dns-service-enumerate-domains-reply)
                                    nil)
     (dispatch
      (make-instance 'service-handle
@@ -138,14 +136,15 @@
                                full-name
                                type
                                class
-                               *service-query-record-reply-pointer*
+                               (make-callable-pointer '%dns-service-query-record-reply)
                                nil)
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
                     :responder self))))
 
-(defmethod query-service-types ((self responder) &key (interface-index 0))
+(defmethod query-service-types ((self responder)
+                                &key (interface-index 0))
   (query-record self
                 *meta-query-service-full-name*
                 +service-type-PTR+
@@ -167,7 +166,7 @@
                                interface-index
                                protocol
                                hostname
-                               *service-get-addr-info-reply-pointer*
+                               (make-callable-pointer '%dns-service-get-addr-info-reply)
                                nil)
     (dispatch
      (make-instance 'service-handle
