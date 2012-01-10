@@ -21,7 +21,9 @@
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defconstant IFNAMSIZ 16))
+  (defconstant IFNAMSIZ 16)
+  #+win32
+  (fli:register-module "Iphlpapi"))
 
 (fli:define-foreign-function (if-name-to-index "if_nametoindex" :source)
     ((name (:reference-pass (:ef-mb-string :limit IFNAMSIZ))))

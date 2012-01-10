@@ -33,8 +33,8 @@
   ((callback-function
     :accessor responder-callback-function
     :initarg :callback-function
-    :initform #'debug-print)
+    :initform #'lw:do-nothing)
    (error-function
     :accessor responder-error-function
     :initarg :error-function
-    :initform #'debug-print)))
+    :initform #'lw:do-nothing)))

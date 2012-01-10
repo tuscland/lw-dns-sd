@@ -1,5 +1,9 @@
 (in-package #:zeroconf)
 
+(defun make-callable-pointer (symbol)
+  (fli:make-pointer :symbol-name symbol
+                    :functionp t))
+
 (defun fli-make-array-from-bytes (pointer length)
   (let ((array (make-array length
                            :element-type '(unsigned-byte 8)
@@ -50,24 +54,22 @@
   (sa_data (:pointer :char)))
 
 
-(fli:define-foreign-function
-    (dns-service-deallocate
-     "DNSServiceRefDeallocate" :source)
+(fli:define-foreign-function (dns-service-deallocate
+                              "DNSServiceRefDeallocate" :source)
     ((sdref service-ref))
   :result-type :void
   :module "dnssd"
   :language :ansi-c)
 
-(fli:define-foreign-function
-    (dns-service-sockfd
-     "DNSServiceRefSockFD" :source)
+(fli:define-foreign-function (dns-service-sockfd
+                              "DNSServiceRefSockFD" :source)
     ((sdref service-ref))
   :result-type :int
   :module "dnssd"
   :language :ansi-c)
 
 
-(defmacro def-dnssd-function (name args external-name)
+(defmacro def-dnssd-function ((name external-name) args)
   "Declares a foreign function that returns a value of
   type DNSServiceErrorType and defines a wrapper around the
   foreign function that raises an error of type
@@ -88,60 +90,60 @@
 	       ,result-var
 	       (dns-sd-error ,result-var)))))))
 
+(editor:setup-indent "def-dnssd-function" 1)
 
-(def-dnssd-function dns-service-get-property
-                    ((property (:reference-pass dnssd-string))
-                     (result (:pointer :void))
-                     (size (:pointer :uint32)))
-                    "DNSServiceGetProperty")
+(def-dnssd-function (dns-service-get-property
+                     "DNSServiceGetProperty")
+  ((property (:reference-pass dnssd-string))
+   (result (:pointer :void))
+   (size (:pointer :uint32))))
 
-(def-dnssd-function dns-service-process-result
-                    ((sdref service-ref))
-                    "DNSServiceProcessResult")
+(def-dnssd-function (dns-service-process-result
+                     "DNSServiceProcessResult")
+  ((sdref service-ref)))
 
-(def-dnssd-function dns-service-add-record
-                    ((sdref service-ref)
-                     (rdref (:pointer record-ref))
-                     (flags flags-t)
-                     (rrtype :uint16)
-                     (rdlen :uint16)
-                     (data (:const (:pointer :void)))
-                     (ttl :uint32))
-                    "DNSServiceAddRecord")
+(def-dnssd-function (dns-service-add-record
+                     "DNSServiceAddRecord")
+  ((sdref service-ref)
+   (rdref (:pointer record-ref))
+   (flags flags-t)
+   (rrtype :uint16)
+   (rdlen :uint16)
+   (data (:const (:pointer :void)))
+   (ttl :uint32)))
 
-(def-dnssd-function dns-service-update-record
-                    ((sdref service-ref)
-                     (rdref record-ref)
-                     (flags flags-t)
-                     (rdlen :uint16)
-                     (data (:const (:pointer :void)))
-                     (ttl :uint32))
-                    "DNSServiceUpdateRecord")
+(def-dnssd-function (dns-service-update-record
+                     "DNSServiceUpdateRecord")
+  ((sdref service-ref)
+   (rdref record-ref)
+   (flags flags-t)
+   (rdlen :uint16)
+   (data (:const (:pointer :void)))
+   (ttl :uint32)))
 
-(def-dnssd-function dns-service-remove-record
-                    ((sdref service-ref)
-                     (rdref record-ref)
-                     (flags flags-t))
-                    "DNSServiceRemoveRecord")
+(def-dnssd-function (dns-service-remove-record
+                     "DNSServiceRemoveRecord")
+  ((sdref service-ref)
+   (rdref record-ref)
+   (flags flags-t)))
 
-(def-dnssd-function dns-service-register
-                    ((sdref (:pointer service-ref))
-                     (flags flags-t)
-                     (interface-index :uint32)
-                     (name (:reference-pass dnssd-string :allow-null t))
-                     (type (:reference-pass dnssd-string))
-                     (domain (:reference-pass dnssd-string :allow-null t))
-                     (host (:reference-pass dnssd-string :allow-null t))
-                     (port :uint16)
-                     (txtlen :uint16)
-                     (txtrecord (:const (:pointer :void)))
-                     (callback (:pointer :function))
-                     (context (:pointer :void)))
-                    "DNSServiceRegister")
+(def-dnssd-function (dns-service-register
+                     "DNSServiceRegister")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (name (:reference-pass dnssd-string :allow-null t))
+   (type (:reference-pass dnssd-string))
+   (domain (:reference-pass dnssd-string :allow-null t))
+   (host (:reference-pass dnssd-string :allow-null t))
+   (port :uint16)
+   (txtlen :uint16)
+   (txtrecord (:const (:pointer :void)))
+   (callback (:pointer :function))
+   (context (:pointer :void))))
 
-(fli:define-foreign-callable
-    (%dns-service-register-reply
-     :result-type :void)
+(fli:define-foreign-callable (%dns-service-register-reply
+                              :result-type :void)
     ((sdref service-ref)
      (flags flags-t)
      (error-code error-t)
@@ -164,22 +166,16 @@
                      :port (service-port service)
                      :properties (service-properties service))))))
 
-(defparameter *service-register-reply-pointer*
-  (fli:make-pointer :symbol-name '%dns-service-register-reply
-                    :functionp t))
+(def-dnssd-function (dns-service-enumerate-domains
+                     "DNSServiceEnumerateDomains")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (callback (:pointer :function))
+   (context (:pointer :void))))
 
-
-(def-dnssd-function dns-service-enumerate-domains
-                    ((sdref (:pointer service-ref))
-                     (flags flags-t)
-                     (interface-index :uint32)
-                     (callback (:pointer :function))
-                     (context (:pointer :void)))
-                    "DNSServiceEnumerateDomains")
-
-(fli:define-foreign-callable
-    (%dns-service-enumerate-domains-reply
-     :result-type :void)
+(fli:define-foreign-callable (%dns-service-enumerate-domains-reply
+                              :result-type :void)
     ((sdref service-ref)
      (flags flags-t)
      (interface-index :uint32)
@@ -200,24 +196,18 @@
                     :name domain
                     :defaultp (member :default symbols))))))
 
-(defparameter *service-enumerate-domains-reply-pointer*
-  (fli:make-pointer :symbol-name '%dns-service-enumerate-domains-reply
-                    :functionp t))
+(def-dnssd-function (dns-service-browse
+                     "DNSServiceBrowse")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (type (:reference-pass dnssd-string))
+   (domain (:reference-pass dnssd-string :allow-null t))
+   (callback (:pointer :function))
+   (context (:pointer :void))))
 
-
-(def-dnssd-function dns-service-browse
-                    ((sdref (:pointer service-ref))
-                     (flags flags-t)
-                     (interface-index :uint32)
-                     (type (:reference-pass dnssd-string))
-                     (domain (:reference-pass dnssd-string :allow-null t))
-                     (callback (:pointer :function))
-                     (context (:pointer :void)))
-                    "DNSServiceBrowse")
-
-(fli:define-foreign-callable
-    (%dns-service-browse-reply
-     :result-type :void)
+(fli:define-foreign-callable (%dns-service-browse-reply
+                              :result-type :void)
     ((sdref service-ref)
      (flags flags-t)
      (interface-index :uint32)
@@ -239,25 +229,19 @@
                    :type type
                    :domain domain))))
 
-(defparameter *service-browse-reply-pointer*
-  (fli:make-pointer :symbol-name '%dns-service-browse-reply
-                    :functionp t))
+(def-dnssd-function (dns-service-resolve
+                     "DNSServiceResolve")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (name (:reference-pass dnssd-string))
+   (type (:reference-pass dnssd-string))
+   (domain (:reference-pass dnssd-string :allow-null t))
+   (callback (:pointer :function))
+   (context (:pointer :void))))
 
-
-(def-dnssd-function dns-service-resolve
-                    ((sdref (:pointer service-ref))
-                     (flags flags-t)
-                     (interface-index :uint32)
-                     (name (:reference-pass dnssd-string))
-                     (type (:reference-pass dnssd-string))
-                     (domain (:reference-pass dnssd-string :allow-null t))
-                     (callback (:pointer :function))
-                     (context (:pointer :void)))
-                    "DNSServiceResolve")
-
-(fli:define-foreign-callable
-    (%dns-service-resolve-reply
-     :result-type :void)
+(fli:define-foreign-callable (%dns-service-resolve-reply
+                              :result-type :void)
     ((sdref service-ref)
      (flags flags-t)
      (interface-index :uint32)
@@ -287,23 +271,18 @@
                        :port (ntohs port)
                        :properties (parse-txt-record txt-record)))))))
 
-(defparameter *service-resolve-reply-pointer*
-  (fli:make-pointer :symbol-name '%dns-service-resolve-reply
-                    :functionp t))
-
-(def-dnssd-function dns-service-get-addr-info
-                    ((sdref (:pointer service-ref))
-                     (flags flags-t)
-                     (interface-index :uint32)
-                     (protocol protocol-t)
-                     (hostname (:reference-pass dnssd-string))
-                     (callback (:pointer :function))
-                     (context (:pointer :void)))
+(def-dnssd-function (dns-service-get-addr-info
                      "DNSServiceGetAddrInfo")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (protocol protocol-t)
+   (hostname (:reference-pass dnssd-string))
+   (callback (:pointer :function))
+   (context (:pointer :void))))
 
-(fli:define-foreign-callable
-    (%dns-service-get-addr-info-reply
-     :result-type :void)
+(fli:define-foreign-callable (%dns-service-get-addr-info-reply
+                              :result-type :void)
     ((sdref service-ref)
      (flags flags-t)
      (interface-index :uint32)
@@ -327,24 +306,19 @@
        address
        ttl))))
 
-(defparameter *service-get-addr-info-reply-pointer*
-  (fli:make-pointer :symbol-name '%dns-service-get-addr-info-reply
-                    :functionp t))
-
-(def-dnssd-function dns-service-query-record
-                    ((sdref (:pointer service-ref))
-                     (flags flags-t)
-                     (interface-index :uint32)
-                     (full-name (:reference-pass dnssd-string))
-                     (rrtype :uint16)
-                     (rrclass :uint16)
-                     (callback (:pointer :function))
-                     (context (:pointer :void)))
+(def-dnssd-function (dns-service-query-record
                      "DNSServiceQueryRecord")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (full-name (:reference-pass dnssd-string))
+   (rrtype :uint16)
+   (rrclass :uint16)
+   (callback (:pointer :function))
+   (context (:pointer :void))))
 
-(fli:define-foreign-callable
-    (%dns-service-query-record-reply
-     :result-type :void)
+(fli:define-foreign-callable (%dns-service-query-record-reply
+                              :result-type :void)
     ((sdref service-ref)
      (flags flags-t)
      (interface-index :uint32)
@@ -372,7 +346,3 @@
                     :class rrclass
                     :data data
                     :ttl ttl)))))
-
-(defparameter *service-query-record-reply-pointer*
-  (fli:make-pointer :symbol-name '%dns-service-query-record-reply
-                    :functionp t))

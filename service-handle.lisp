@@ -27,35 +27,32 @@
   (:default-initargs
    :direction :input))
 
-(defmethod shared-initialize :after ((self service-handle) slot-names &key)
-  (setf (comm:socket-stream-socket self)
-        (dns-service-sockfd
-         (handle-ref self))))
+;(defmethod initialize-instance :after ((self service-handle) &key)
+;  (setf (comm:socket-stream-socket self)
+;        (dns-service-sockfd (handle-ref self))))
 
 (defmethod %cancel ((self service-handle))
-  (dns-service-deallocate
-   (handle-ref self))
+  (dns-service-deallocate (handle-ref self))
   (setf (slot-value self 'ref) nil))
+
+(defmethod %service-handle-process-result ((self service-handle))
+;  (format t "Processing handle ~A (mailbox: ~A)~%" self (mp:process-mailbox (mp:get-current-process)))
+  (bind-service-handle self
+     (dns-service-process-result (handle-ref self)))
+  (service-handle-cancel-after-reply-p self))
 
 (defmethod service-handle-invoke-callback ((self service-handle) error-code &rest args)
   (if (= error-code +no-err+)
       (let ((responder (service-handle-responder self)))
-        (apply
-         (responder-callback-function responder)
-         responder self args))
+        (apply (responder-callback-function responder)
+               responder self args))
     (dns-sd-error error-code)))
-
-(defmethod %service-handle-process-result ((self service-handle))
-  (bind-service-handle self
-     (dns-service-process-result
-      (handle-ref self)))
-  (service-handle-cancel-after-reply-p self))
 
 (defmethod service-handle-process-result ((self service-handle))
   (handler-case (%service-handle-process-result self)
     (dns-sd-error (condition)
+      (format t "Error Processing handle ~A (mailbox: ~A)~%" self (mp:process-mailbox (mp:get-current-process)))
       (let ((responder (service-handle-responder self)))
-        (funcall
-         (responder-error-function responder)
-         responder self condition))
+        (funcall (responder-error-function responder)
+                 responder self condition))
       t)))

@@ -42,6 +42,7 @@
    :callback-function 'browser-zeroconf-callback
    :error-function 'browser-zeroconf-error
    :create-callback 'browser-create
+   :destroy-callback 'browser-destroy
    :best-height 500
    :best-width 300
    :message-area t))
@@ -79,12 +80,14 @@
                cocoa:ns-progress-indicator-spinning-style)
   spinner)
 
-(defmethod browser-create
-           ((self browser))
+(defmethod browser-create ((self browser))
+  (zeroconf:start)
   (browser-update-interface self))
 
-(defmethod browser-running-p
-           ((self browser))
+(defmethod browser-destroy ((self browser))
+  (zeroconf:stop))
+
+(defmethod browser-running-p ((self browser))
   (not (null
         (browser-browse-handle self))))
 
