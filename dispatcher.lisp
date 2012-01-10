@@ -9,9 +9,6 @@
     :accessor dispatcher-process
     :initform nil)))
 
-(defmethod shared-initialize :after ((self dispatcher) slot-names &key)
-  (dispatcher-start self))
-
 (defmethod dispatcher-running-p ((self dispatcher))
   (mp:process-alive-p
    (dispatcher-process self)))
@@ -27,7 +24,8 @@
   (%cancel handle))
 
 (defmethod %dispatcher-cleanup (process (self dispatcher))
-  (dolist (handle (dispatcher-handles self))
+  (dolist (handle (copy-seq
+                   (dispatcher-handles self)))
     (%dispatcher-remove-handle self handle)))
 
 (defmethod dispatcher-loop ((self dispatcher))
@@ -39,21 +37,24 @@
                       :wait-reason "Waiting for Zeroconf events"
                       :wait-function #'(lambda ()
                                          (mp:mailbox-not-empty-p mailbox)))
-        do 
-        (if handle
-               (when (service-handle-process-result handle)
-                 (%dispatcher-remove-handle self handle))
-             (mp:process-all-events))
+        do (with-simple-restart (abort "Ignore error")
+             (if handle
+                 (when (service-handle-process-result handle)
+                   (%dispatcher-remove-handle self handle))
+               (mp:process-all-events)))
         while t))
 
 (defmethod dispatcher-start ((self dispatcher))
   (when (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already started."))
-  (let ((process (mp:process-run-function "Zeroconf Event Dispatcher"
-                                          '(:mailbox t)
-                                          #'dispatcher-loop
-                                          self)))
-    (setf (dispatcher-process self) process)))
+  (let ((mp:*process-initial-bindings*
+         (list* (cons '*standard-output* (or mp:*background-standard-output* *standard-output*))
+                mp:*process-initial-bindings*)))
+    (let ((process (mp:process-run-function "Zeroconf Dispatcher"
+                                            '(:mailbox t)
+                                            #'dispatcher-loop self)))
+      (setf (dispatcher-process self) process)))
+  self)
 
 (defmethod dispatcher-stop ((self dispatcher))
   (let ((process (dispatcher-process self)))
@@ -61,20 +62,19 @@
                      #'(lambda ()
                          (mp:process-kill
                           (mp:get-current-process))))
-    (mp:process-join process)))
+    (mp:process-join process))
+  self)
 
 (defmethod dispatcher-add-handle ((self dispatcher) handle)
-  (assert handle)
-  (mp:process-send
-   (dispatcher-process self)
-   `(%dispatcher-add-handle ,self ,handle))
+  (check-type handle handle)
+  (mp:process-send (dispatcher-process self)
+                   `(%dispatcher-add-handle ,self ,handle))
   handle)
 
 (defmethod dispatcher-remove-handle ((self dispatcher) handle)
-  (assert handle)
-  (mp:process-send
-   (dispatcher-process self)
-   `(%dispatcher-remove-handle ,self ,handle)))
+  (check-type handle handle)
+  (mp:process-send (dispatcher-process self)
+                   `(%dispatcher-remove-handle ,self ,handle)))
 
 (defmethod print-object ((self dispatcher) stream)
   (print-unreadable-object (self stream :type t :identity t)
