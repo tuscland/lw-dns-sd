@@ -58,14 +58,12 @@
                               "DNSServiceRefDeallocate" :source)
     ((sdref service-ref))
   :result-type :void
-  :module "dnssd"
   :language :ansi-c)
 
 (fli:define-foreign-function (dns-service-sockfd
                               "DNSServiceRefSockFD" :source)
     ((sdref service-ref))
   :result-type :int
-  :module "dnssd"
   :language :ansi-c)
 
 
@@ -82,7 +80,6 @@
        (fli:define-foreign-function (,unwrapped-name ,external-name :source)
 	   ,args
 	 :result-type error-t
-         :module "dnssd"
          :language :ansi-c)
        (defun ,name ,arg-names
 	 (let ((,result-var (,unwrapped-name ,@arg-names)))

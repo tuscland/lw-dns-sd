@@ -66,7 +66,7 @@
   (objc:invoke
    (capi:cocoa-view-pane-view
     (browser-spinner self))
-   (if running
+   (if (browser-running-p self)
        "startAnimation:"
      "stopAnimation:") nil))
 
