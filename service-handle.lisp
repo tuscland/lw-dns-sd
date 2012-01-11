@@ -50,7 +50,6 @@
 (defmethod service-handle-process-result ((self service-handle))
   (handler-case (%service-handle-process-result self)
     (dns-sd-error (condition)
-      (format t "Error Processing handle ~A (mailbox: ~A)~%" self (mp:process-mailbox (mp:get-current-process)))
       (let ((responder (service-handle-responder self)))
         (funcall (responder-error-function responder)
                  responder self condition))

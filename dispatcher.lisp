@@ -36,8 +36,11 @@
                       (dispatcher-handles self)
                       :wait-reason "Waiting for Zeroconf events"
                       :wait-function #'(lambda ()
-                                         (mp:mailbox-not-empty-p mailbox)))
-        do (with-simple-restart (abort "Ignore error")
+                                         #+lispworks6.1
+                                         (mp:mailbox-not-empty-p mailbox)
+                                         #-lispworks6.1
+                                         (mp:mailbox-peek mailbox)))
+        do (with-simple-restart (abort "Ignore error.")
              (if handle
                  (when (service-handle-process-result handle)
                    (%dispatcher-remove-handle self handle))
@@ -45,8 +48,7 @@
         while t))
 
 (defmethod dispatcher-start ((self dispatcher))
-  #+win32
-  (fli:register-module "dnssd")
+  #+win32 (fli:register-module "dnssd")
   (when (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already started."))
   (let ((mp:*process-initial-bindings*
@@ -59,12 +61,14 @@
   self)
 
 (defmethod dispatcher-stop ((self dispatcher))
-  (let ((process (dispatcher-process self)))
-    (mp:process-send process
-                     #'(lambda ()
-                         (mp:process-kill
-                          (mp:get-current-process))))
-    (mp:process-join process))
+  (if (dispatcher-running-p self)
+      (let ((process (dispatcher-process self)))
+        (mp:process-send process
+                         #'(lambda ()
+                             (mp:process-kill
+                              (mp:get-current-process))))
+        (mp:process-join process))
+    (warn "Zeroconf Dispatcher not running"))  
   self)
 
 (defmethod dispatcher-add-handle ((self dispatcher) handle)

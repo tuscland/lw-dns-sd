@@ -12,6 +12,7 @@
                                pointer
                                :end2 length)))
 
+#+lispworks6.1
 (defun fli-sockaddr-to-string (pointer)
   (comm:ip-address-string
    (ecase (fli:foreign-slot-value pointer 'sa_family)
@@ -23,6 +24,15 @@
       (fli:with-coerced-pointer
           (addr-in :type '(:pointer (:struct comm::sockaddr_in6))) pointer
         (comm::sockaddr-in6-to-lisp addr-in))))))
+
+#+lispworks6.0
+(defun fli-sockaddr-to-string (pointer)
+  (comm:ip-address-string
+   (ecase (fli:foreign-slot-value pointer 'sa_family)
+     (#.comm::*socket_af_inet*
+      (fli:with-coerced-pointer
+          (addr-in :type '(:pointer (:struct comm::sockaddr_in))) pointer
+        (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr)))))))
 
 (fli:define-foreign-type service-ref ()
   '(:pointer :void))
