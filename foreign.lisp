@@ -95,7 +95,7 @@
 	 (let ((,result-var (,unwrapped-name ,@arg-names)))
 	   (if (= ,result-var +no-err+)
 	       ,result-var
-	       (dns-sd-error ,result-var)))))))
+	       (raise-dns-sd-error ,result-var)))))))
 
 (editor:setup-indent "def-dnssd-function" 1)
 

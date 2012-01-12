@@ -26,7 +26,7 @@ classes, and text descriptions of the errors.")
       ;; can instanciate a condition.
       (make-condition 'dns-sd-result-error :code code))))
 
-(defun dns-sd-error (code)
+(defun raise-dns-sd-error (code)
   "Given a DNS SD API error code, raises the corresponding Lisp error.
 If the code is unknown, an error of type DNS-SD-RESULT-ERROR is
 raised."

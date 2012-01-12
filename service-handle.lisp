@@ -45,7 +45,7 @@
       (let ((responder (service-handle-responder self)))
         (apply (responder-callback-function responder)
                responder self args))
-    (dns-sd-error error-code)))
+    (raise-dns-sd-error error-code)))
 
 (defmethod service-handle-process-result ((self service-handle))
   (handler-case (%service-handle-process-result self)

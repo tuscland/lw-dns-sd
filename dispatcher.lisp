@@ -36,11 +36,9 @@
                       (dispatcher-handles self)
                       :wait-reason "Waiting for Zeroconf events"
                       :wait-function #'(lambda ()
-                                         #+lispworks6.1
-                                         (mp:mailbox-not-empty-p mailbox)
-                                         #-lispworks6.1
-                                         (mp:mailbox-peek mailbox)))
-        do (with-simple-restart (abort "Ignore error.")
+                                         #+lispworks6.1 (mp:mailbox-not-empty-p mailbox)
+                                         #-lispworks6.1 (mp:mailbox-peek mailbox)))
+        do (with-simple-restart (abort "Return to event loop.")
              (if handle
                  (when (service-handle-process-result handle)
                    (%dispatcher-remove-handle self handle))
@@ -51,13 +49,13 @@
   #+win32 (fli:register-module "dnssd")
   (when (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already started."))
-  (let ((mp:*process-initial-bindings*
-         (list* (cons '*standard-output* (or mp:*background-standard-output* *standard-output*))
-                mp:*process-initial-bindings*)))
-    (let ((process (mp:process-run-function "Zeroconf Dispatcher"
-                                            '(:mailbox t)
-                                            #'dispatcher-loop self)))
-      (setf (dispatcher-process self) process)))
+  (let* ((mp:*process-initial-bindings*
+          (list* (cons '*standard-output* (or mp:*background-standard-output* *standard-output*))
+                 mp:*process-initial-bindings*))
+         (process (mp:process-run-function "Zeroconf Dispatcher"
+                                           '(:mailbox t)
+                                           #'dispatcher-loop self)))
+    (setf (dispatcher-process self) process))
   self)
 
 (defmethod dispatcher-stop ((self dispatcher))
@@ -67,7 +65,7 @@
                          #'(lambda ()
                              (mp:process-kill
                               (mp:get-current-process))))
-        (mp:process-join process))
+        (mp:process-join process :timeout 10))
     (warn "Zeroconf Dispatcher not running"))  
   self)
 
