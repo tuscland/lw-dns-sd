@@ -2,6 +2,7 @@
 
 (asdf:defsystem #:zeroconf
   :serial t
+  :depends-on (#:infra)
   :components ((:file "package")
                (:file "debugging")
                (:file "network-utilities")

@@ -9,9 +9,11 @@
                               size)
     (fli:dereference result)))
 
-(defun register (responder service
+;;;; Callback: (handle operation service)
+;;;; Where:    operation = [:add | :conflict]
+(defun register (callback-function error-function
+                 service
                  &key (no-auto-rename nil))
-  (check-type responder responder)
   (check-type (service-interface-index service) (integer 0))
   (when (service-name service)
     (check-type (service-name service) string))
@@ -44,12 +46,42 @@
       (dispatch
        (make-instance 'service-handle
                       :ref (fli:dereference ptr)
-                      :responder responder
+                      :callback-function callback-function
+                      :error-function error-function
                       :user-info (copy-service service))))))
 
-(defun browse (responder type
-                         &key (interface-index 0) (domain nil))
-  (check-type responder responder)
+(defvar *enumerated-domain-flags* `((:registration . ,+flag-registration-domains+)
+                                    (:browse       . ,+flag-browse-domains+)))
+
+
+;;;; Callback: (handle operation defaultp more-coming-p domain)
+;;;; Where:    operation = [:add | :remove]
+(defun enumerate-domains (callback-function error-function
+                          &key (interface-index 0) (domain :browse))
+  (check-type interface-index (integer 0))
+  (assert (member domain *enumerated-domain-flags* :key #'car)
+      (domain)
+    "Keyword argument :DOMAIN ~A is not a member of ~A."
+    domain (mapcar #'car *enumerated-domain-flags*))
+  (fli:with-dynamic-foreign-objects ((ptr service-ref))
+    (dns-service-enumerate-domains
+     ptr
+     (cdr
+      (assoc domain *enumerated-domain-flags*))
+     interface-index
+     (make-callable-pointer '%dns-service-enumerate-domains-reply)
+     nil)
+    (dispatch
+     (make-instance 'service-handle
+                    :ref (fli:dereference ptr)
+                    :callback-function callback-function
+                    :error-function error-function))))
+
+;;;; Callback: (handle operation more-coming-p service)
+;;;; Where:    operation = [:add | :remove]
+(defun browse (callback-function error-function
+               type
+               &key (interface-index 0) (domain nil))
   (check-type type string)
   (check-type interface-index (integer 0))
   (when domain
@@ -65,11 +97,13 @@
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
-                    :responder responder))))
+                    :callback-function callback-function
+                    :error-function error-function))))
 
-
-(defmethod resolve ((self responder) service
-                    &key (resolve-on-all-interfaces t) (force-multicast nil))
+;;;; Callback: (handle more-coming-p service)
+(defun resolve (callback-function error-function
+                service
+                &key (resolve-on-all-interfaces t) (force-multicast nil))
   (unless resolve-on-all-interfaces
     (check-type (service-interface-index service) (integer 0)))
   (check-type (service-name service) string)
@@ -91,35 +125,45 @@
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
-                    :responder self
+                    :callback-function callback-function
+                    :error-function error-function
+                    :user-info (copy-service service)
                     :cancel-after-reply t))))
 
-(defvar *enumerated-domain-flags* `((:registration . ,+flag-registration-domains+)
-                                    (:browse       . ,+flag-browse-domains+)))
-
-(defmethod enumerate-domains ((self responder)
-                              &key (interface-index 0) (domain :browse))
-  (check-type interface-index (integer 0))
-  (assert (member domain *enumerated-domain-flags* :key #'car)
-      (domain)
-    "Keyword argument :DOMAIN ~A is not a member of ~A."
-    domain (mapcar #'car *enumerated-domain-flags*))
+;;;; Callback: (handle operation more-coming-p interface-index hostname address ttl)
+;;;; Where:    operation = [:add | :invalid]
+(defun get-addr-info (callback-function error-function
+                      hostname
+                      &key (interface-index 0)
+                               (protocol +protocol-ipv4+)
+                               (force-multicast nil)
+                               (long-lived-query nil))
   (fli:with-dynamic-foreign-objects ((ptr service-ref))
-    (dns-service-enumerate-domains ptr
-                                   (cdr
-                                    (assoc domain *enumerated-domain-flags*))
-                                   interface-index
-                                   (make-callable-pointer '%dns-service-enumerate-domains-reply)
-                                   nil)
+    (dns-service-get-addr-info ptr
+                               (or (when force-multicast
+                                    +flag-force-multicast+)
+                                  (when long-lived-query
+                                    +flag-long-lived-query+)
+                                  0)
+                               interface-index
+                               protocol
+                               hostname
+                               (make-callable-pointer '%dns-service-get-addr-info-reply)
+                               nil)
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
-                    :responder self))))
+                    :callback-function callback-function
+                    :error-function error-function
+                    :cancel-after-reply t))))
 
-(defmethod query-record ((self responder) full-name type class
-                         &key (interface-index 0)
-                              (force-multicast nil)
-                              (long-lived-query nil))
+;;;; Callback: (handle operation more-coming-p record)
+;;;; Where:    operation = [:add | :remove]
+(defun query-record (callback-function error-function
+                     full-name type class
+                     &key (interface-index 0)
+                     (force-multicast nil)
+                     (long-lived-query nil))
   (check-type full-name string)
   (check-type type integer)
   (check-type class integer)
@@ -140,35 +184,15 @@
     (dispatch
      (make-instance 'service-handle
                     :ref (fli:dereference ptr)
-                    :responder self))))
+                    :callback-function callback-function
+                    :error-function error-function))))
 
-(defmethod query-service-types ((self responder)
-                                &key (interface-index 0))
-  (query-record self
+;;;; Callback: see query-record
+(defun query-service-types (callback-function error-function
+                            &key (interface-index 0))
+  (query-record callback-function
+                error-function
                 *meta-query-service-full-name*
                 +service-type-PTR+
                 +service-class-in+
                 :interface-index interface-index))
-
-(defmethod get-addr-info ((self responder) hostname
-                          &key (interface-index 0)
-                               (protocol +protocol-ipv4+)
-                               (force-multicast nil)
-                               (long-lived-query nil))
-  (fli:with-dynamic-foreign-objects ((ptr service-ref))
-    (dns-service-get-addr-info ptr
-                               (or (when force-multicast
-                                    +flag-force-multicast+)
-                                  (when long-lived-query
-                                    +flag-long-lived-query+)
-                                  0)
-                               interface-index
-                               protocol
-                               hostname
-                               (make-callable-pointer '%dns-service-get-addr-info-reply)
-                               nil)
-    (dispatch
-     (make-instance 'service-handle
-                    :ref (fli:dereference ptr)
-                    :responder self
-                    :cancel-after-reply t))))

@@ -87,14 +87,10 @@
 (defconstant +flag-force-multicast+      #x400)
 (defconstant +flag-no-flag+              #x000)
 
-(defun flags->symbols (definitions flags)
-  (remove nil
-          (loop for (flag symbol default-symbol) in definitions
-                if (zerop (logand (symbol-value flag)
-                                  flags))
-                collect default-symbol
-                else
-                collect symbol)))
+(defun test-flag (flag included-symbol excluded-symbol flags)
+  (if (zerop (logand flag flags))
+      excluded-symbol
+    included-symbol))
 
 (defun symbols->flags (definitions symbols)
   (loop with flags = 0

@@ -28,13 +28,3 @@
   ((ref
     :initarg :ref
     :reader handle-ref)))
-
-(defclass responder ()
-  ((callback-function
-    :accessor responder-callback-function
-    :initarg :callback-function
-    :initform #'lw:do-nothing)
-   (error-function
-    :accessor responder-error-function
-    :initarg :error-function
-    :initform #'lw:do-nothing)))

@@ -164,7 +164,7 @@
       (service-handle-invoke-callback
        handle
        error-code
-       (flags->symbols '((+flag-add+ :add :conflict)) flags)
+       (test-flag +flag-add+ :add :conflict flags)
        (make-service :interface-index (service-interface-index service)
                      :name name
                      :type type
@@ -190,18 +190,17 @@
      (domain (:reference-return dnssd-string :allow-null t))
      (context (:pointer :void)))
   (declare (ignore context sdref))
-  (let ((symbols (flags->symbols '((+flag-more-coming+ :more-coming :finished)
-                                   (+flag-add+         :add         :remove)
-                                   (+flag-default+     :default     nil))
-                     flags)))
+  (let ((defaultp (test-flag +flag-default+ t nil flags)))
     (with-bound-service-handle handle
       (service-handle-invoke-callback
        handle
        error-code
-       symbols
+       (test-flag +flag-add+ :add :remove flags)
+       defaultp
+       (test-flag +flag-more-coming+ t nil flags)
        (make-domain :interface-index interface-index
                     :name domain
-                    :defaultp (member :default symbols))))))
+                    :defaultp defaultp)))))
 
 (def-dnssd-function (dns-service-browse
                      "DNSServiceBrowse")
@@ -228,9 +227,8 @@
     (service-handle-invoke-callback
      handle
      error-code
-     (flags->symbols '((+flag-more-coming+ :more-coming :finished)
-                       (+flag-add+         :add         :remove))
-                     flags)
+     (test-flag +flag-add+ :add :remove flags)
+     (test-flag +flag-more-coming+ t nil flags)
      (make-service :interface-index interface-index
                    :name name
                    :type type
@@ -267,8 +265,7 @@
         (service-handle-invoke-callback
          handle
          error-code
-         (flags->symbols '((+flag-more-coming+ :more-coming :finished))
-                         flags)
+         (test-flag +flag-more-coming+ t nil flags)
          (make-service :interface-index interface-index
                        :name (service-name service)
                        :full-name full-name
@@ -305,9 +302,8 @@
       (service-handle-invoke-callback
        handle
        error-code
-       (flags->symbols '((+flag-more-coming+ :more-coming :finished)
-                         (+flag-add+         :add         :invalid))
-                       flags)
+       (test-flag +flag-add+ :add :invalid flags)
+       (test-flag +flag-more-coming+ t nil flags)
        interface-index
        hostname
        address
@@ -344,9 +340,8 @@
       (service-handle-invoke-callback
        handle
        error-code
-       (flags->symbols '((+flag-more-coming+ :more-coming :finished)
-                         (+flag-add+         :add         :remove))
-                       flags)
+       (test-flag +flag-add+ :add :remove flags)
+       (test-flag +flag-more-coming+ t nil flags)
        (make-record :interface-index interface-index
                     :name full-name
                     :type rrtype
