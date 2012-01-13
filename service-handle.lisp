@@ -31,10 +31,10 @@
   (:default-initargs
    :direction :input))
 
-(defmethod initialize-instance :after ((self service-handle) &key)
-  (assert (not (fli:null-pointer-p (handle-ref self))))
+(defmethod initialize-instance :after ((self service-handle) &key ref)
+  (assert (not (fli:null-pointer-p ref)))
   (setf (comm:socket-stream-socket self)
-        (dns-service-sockfd (handle-ref self))))
+        (dns-service-sockfd ref)))
 
 (defmethod %cancel ((self service-handle))
   (when (fli:null-pointer-p (handle-ref self))

@@ -57,10 +57,17 @@
                        (:foreign-name "DNSServiceProtocol"))
   :uint32)
 
+#+macosx
 (fli:define-c-struct (sockaddr
                       (:foreign-name "sockaddr"))
   (sa_len :uint8)
   (sa_family :uint8)
+  (sa_data (:pointer :char)))
+
+#+win32
+(fli:define-c-struct (sockaddr
+                      (:foreign-name "sockaddr"))
+  (sa_family :uint16)
   (sa_data (:pointer :char)))
 
 
@@ -95,7 +102,7 @@
 	 (let ((,result-var (,unwrapped-name ,@arg-names)))
 	   (if (= ,result-var +no-err+)
 	       ,result-var
-	       (raise-dns-sd-error ,result-var)))))))
+             (raise-dns-sd-error ,result-var)))))))
 
 (editor:setup-indent "def-dnssd-function" 1)
 
