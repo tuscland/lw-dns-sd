@@ -1,23 +1,24 @@
 (in-package #:zeroconf)
 
 ;; From cl-swap
-(defun swap-bytes-16 (integer)
-  (declare (type (unsigned-byte 16) integer)
-           (optimize (speed 3) (safety 0) (debug 0)))
-  (logior (ash (logand #xFF integer)  8)
-          (ash integer -8)))
+(declaim (inline swap-bytes-16))
+(defun swap-bytes-16 (value)
+  (declare (type (unsigned-byte 16) value)
+           (optimize (speed 3) (safety 0) (debug 0) (hcl:fixnum-safety 0)))
+  (logior (ash (logand #xFF value)  8)
+          (ash value -8)))
 
-(defun ntohs (integer)
+(defun ntohs (value)
   #+:little-endian
-  (swap-bytes-16 integer)
+  (swap-bytes-16 value)
   #+:big-endian
-  integer)
+  value)
 
-(defun htons (integer)
+(defun htons (value)
   #+:little-endian
-  (swap-bytes-16 integer)
+  (swap-bytes-16 value)
   #+:big-endian
-  integer)
+  value)
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
