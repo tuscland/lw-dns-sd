@@ -46,9 +46,12 @@
         while t))
 
 (defmethod dispatcher-start ((self dispatcher))
-  #+win32 (fli:register-module "dnssd")
   (when (dispatcher-running-p self)
     (error "Zeroconf Dispatcher is already started."))
+
+  #+win32 (fli:register-module "dnssd")
+  (assert (> (zeroconf:daemon-version) 0))
+
   (let* ((mp:*process-initial-bindings*
           (list* (cons '*standard-output* (or mp:*background-standard-output* *standard-output*))
                  mp:*process-initial-bindings*))

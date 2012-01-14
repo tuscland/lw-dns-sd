@@ -6,17 +6,20 @@
   (:export #:if-name-to-index
            #:if-index-to-name
 
+           #:zeroconf-error
+
+           #:start
+           #:stop
+
            #:daemon-version
+
+           #:cancel
            #:register
+           #:enumerate-domains
            #:browse
            #:resolve
-           #:enumerate-domains
-           #:query-record
            #:get-addr-info
-
-           #:responder
-           #:responder-callback-function
-           #:responder-error-function
+           #:query-record
 
            #:service
            #:make-service
@@ -42,14 +45,7 @@
            #:make-domain
            #:domain-interface-index
            #:domain-name
-           #:domain-defaultp
-
-           #:cancel
-
-           #:start
-           #:stop
-
-           #:dns-sd-error))
+           #:domain-defaultp))
 
 (defpackage :zeroconf-user
   (:use :zeroconf :cl))

@@ -1,9 +1,5 @@
 (in-package #:zeroconf)
 
-(defun make-callable-pointer (symbol)
-  (fli:make-pointer :symbol-name symbol
-                    :functionp t))
-
 (defun fli-make-array-from-bytes (pointer length)
   (let ((array (make-array length
                            :element-type '(unsigned-byte 8)
@@ -84,7 +80,7 @@
   :language :ansi-c)
 
 
-(defmacro def-dnssd-function ((name external-name) args)
+(defmacro define-zeroconf-function ((name external-name) args)
   "Declares a foreign function that returns a value of
   type DNSServiceErrorType and defines a wrapper around the
   foreign function that raises an error of type
@@ -93,31 +89,31 @@
   (let ((unwrapped-name (intern (format nil "%~A" name)))
 	(result-var (gensym "RESULT"))
         (arg-names (mapcar #'car args)))
-    `(dspec:def (def-dnssd-function ,name)
+    `(dspec:def (define-zeroconf-function (,name ,external-name))
        (fli:define-foreign-function (,unwrapped-name ,external-name :source)
-	   ,args
-	 :result-type error-t
+           ,args
+         :result-type error-t
          :language :ansi-c)
        (defun ,name ,arg-names
-	 (let ((,result-var (,unwrapped-name ,@arg-names)))
-	   (if (= ,result-var +no-err+)
-	       ,result-var
-             (raise-dns-sd-error ,result-var)))))))
+         (let ((,result-var (,unwrapped-name ,@arg-names)))
+           (if (= ,result-var +no-err+)
+               ,result-var
+             (raise-zeroconf-error ,result-var)))))))
 
-(editor:setup-indent "def-dnssd-function" 1)
+(editor:setup-indent "define-zeroconf-function" 1)
 
-(def-dnssd-function (dns-service-get-property
-                     "DNSServiceGetProperty")
+(define-zeroconf-function (dns-service-get-property
+                           "DNSServiceGetProperty")
   ((property (:reference-pass dnssd-string))
    (result (:pointer :void))
    (size (:pointer :uint32))))
 
-(def-dnssd-function (dns-service-process-result
-                     "DNSServiceProcessResult")
+(define-zeroconf-function (dns-service-process-result
+                           "DNSServiceProcessResult")
   ((sdref service-ref)))
 
-(def-dnssd-function (dns-service-add-record
-                     "DNSServiceAddRecord")
+(define-zeroconf-function (dns-service-add-record
+                           "DNSServiceAddRecord")
   ((sdref service-ref)
    (rdref (:pointer record-ref))
    (flags flags-t)
@@ -126,8 +122,8 @@
    (data (:const (:pointer :void)))
    (ttl :uint32)))
 
-(def-dnssd-function (dns-service-update-record
-                     "DNSServiceUpdateRecord")
+(define-zeroconf-function (dns-service-update-record
+                           "DNSServiceUpdateRecord")
   ((sdref service-ref)
    (rdref record-ref)
    (flags flags-t)
@@ -135,14 +131,14 @@
    (data (:const (:pointer :void)))
    (ttl :uint32)))
 
-(def-dnssd-function (dns-service-remove-record
-                     "DNSServiceRemoveRecord")
+(define-zeroconf-function (dns-service-remove-record
+                           "DNSServiceRemoveRecord")
   ((sdref service-ref)
    (rdref record-ref)
    (flags flags-t)))
 
-(def-dnssd-function (dns-service-register
-                     "DNSServiceRegister")
+(define-zeroconf-function (dns-service-register
+                           "DNSServiceRegister")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
@@ -180,8 +176,8 @@
                      :port (service-port service)
                      :properties (service-properties service))))))
 
-(def-dnssd-function (dns-service-enumerate-domains
-                     "DNSServiceEnumerateDomains")
+(define-zeroconf-function (dns-service-enumerate-domains
+                           "DNSServiceEnumerateDomains")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
@@ -209,8 +205,8 @@
                     :name domain
                     :defaultp defaultp)))))
 
-(def-dnssd-function (dns-service-browse
-                     "DNSServiceBrowse")
+(define-zeroconf-function (dns-service-browse
+                           "DNSServiceBrowse")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
@@ -241,8 +237,8 @@
                    :type type
                    :domain domain))))
 
-(def-dnssd-function (dns-service-resolve
-                     "DNSServiceResolve")
+(define-zeroconf-function (dns-service-resolve
+                           "DNSServiceResolve")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
@@ -282,8 +278,8 @@
                        :port (ntohs port)
                        :properties (parse-txt-record txt-record)))))))
 
-(def-dnssd-function (dns-service-get-addr-info
-                     "DNSServiceGetAddrInfo")
+(define-zeroconf-function (dns-service-get-addr-info
+                           "DNSServiceGetAddrInfo")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
@@ -316,8 +312,8 @@
        address
        ttl))))
 
-(def-dnssd-function (dns-service-query-record
-                     "DNSServiceQueryRecord")
+(define-zeroconf-function (dns-service-query-record
+                           "DNSServiceQueryRecord")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
