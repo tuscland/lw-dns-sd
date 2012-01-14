@@ -3,10 +3,9 @@
 
 (defun daemon-version ()
   (fli:with-dynamic-foreign-objects ((result :uint32)
-                                     (size :uint32))
-    (dns-service-get-property *property-daemon-version*
-                              result
-                              size)
+                                     (size :uint32
+                                           :initial-element (fli:size-of :uint32)))
+    (dns-service-get-property *property-daemon-version* result size)
     (fli:dereference result)))
 
 ;;;; Callback: (handle operation service)
