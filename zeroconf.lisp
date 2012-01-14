@@ -134,10 +134,8 @@
 ;;;; Where:    operation = [:add | :invalid]
 (defun get-addr-info (callback-function error-function
                       hostname
-                      &key (interface-index 0)
-                               (protocol +protocol-ipv4+)
-                               (force-multicast nil)
-                               (long-lived-query nil))
+                      &key (interface-index 0) (protocol +protocol-ipv4+)
+                           (force-multicast nil) (long-lived-query nil))
   (fli:with-dynamic-foreign-objects ((ptr service-ref))
     (dns-service-get-addr-info ptr
                                (or (when force-multicast

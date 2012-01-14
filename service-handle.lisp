@@ -37,10 +37,11 @@
         (dns-service-sockfd ref)))
 
 (defmethod %cancel ((self service-handle))
-  (when (fli:null-pointer-p (handle-ref self))
-    (error "Service handle has already been cancelled."))
-  (dns-service-deallocate (handle-ref self))
-  (setf (slot-value self 'ref) nil))
+  (if (fli:null-pointer-p (handle-ref self))
+      (warn "Service handle has already been cancelled.")
+    (progn 
+      (dns-service-deallocate (handle-ref self))
+      (setf (slot-value self 'ref) nil))))
 
 (defmethod %service-handle-process-result ((self service-handle))
   (bind-service-handle self
