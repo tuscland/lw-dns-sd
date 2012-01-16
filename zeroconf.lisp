@@ -36,11 +36,11 @@
                               (service-type service)
                               (service-domain service)
                               (service-host service)
-                              (htons
+                              (infra:htons
                                (service-port service))
                               (length txt-record)
                               txt-ptr
-                              (make-callable-pointer '%dns-service-register-reply)
+                              (infra:make-callback-pointer '%dns-service-register-reply)
                               nil))
       (dispatch
        (make-instance 'service-handle
@@ -68,7 +68,7 @@
      (cdr
       (assoc domain *enumerated-domain-flags*))
      interface-index
-     (make-callable-pointer '%dns-service-enumerate-domains-reply)
+     (infra:make-callback-pointer '%dns-service-enumerate-domains-reply)
      nil)
     (dispatch
      (make-instance 'service-handle
@@ -91,7 +91,7 @@
                         interface-index
                         type
                         domain
-                        (make-callable-pointer '%dns-service-browse-reply)
+                        (infra:make-callback-pointer '%dns-service-browse-reply)
                         nil)
     (dispatch
      (make-instance 'service-handle
@@ -119,7 +119,7 @@
                          (service-name service)
                          (service-type service)
                          (service-domain service)
-                         (make-callable-pointer '%dns-service-resolve-reply)
+                         (infra:make-callback-pointer '%dns-service-resolve-reply)
                          nil)
     (dispatch
      (make-instance 'service-handle
@@ -145,7 +145,7 @@
                                interface-index
                                protocol
                                hostname
-                               (make-callable-pointer '%dns-service-get-addr-info-reply)
+                               (infra:make-callback-pointer '%dns-service-get-addr-info-reply)
                                nil)
     (dispatch
      (make-instance 'service-handle
@@ -176,7 +176,7 @@
                                full-name
                                type
                                class
-                               (make-callable-pointer '%dns-service-query-record-reply)
+                               (infra:make-callback-pointer '%dns-service-query-record-reply)
                                nil)
     (dispatch
      (make-instance 'service-handle

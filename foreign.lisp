@@ -275,7 +275,7 @@
                        :type (service-type service)
                        :domain (service-domain service)
                        :host host
-                       :port (ntohs port)
+                       :port (infra:ntohs port)
                        :properties (parse-txt-record txt-record)))))))
 
 (define-zeroconf-function (dns-service-get-addr-info

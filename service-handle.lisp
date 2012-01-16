@@ -52,7 +52,7 @@
   (if (= error-code +no-err+)
       (apply (service-handle-callback-function self)
              self args)
-    (raise-dns-sd-error error-code)))
+    (raise-zeroconf-error error-code)))
 
 (defmethod service-handle-process-result ((self service-handle))
   (handler-case (%service-handle-process-result self)
