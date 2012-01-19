@@ -56,7 +56,7 @@
 
 (defmethod service-handle-process-result ((self service-handle))
   (handler-case (%service-handle-process-result self)
-    (dns-sd-error (condition)
+    (zeroconf-error (condition)
       (funcall (service-handle-error-function self)
                self condition)
       t)))

@@ -30,20 +30,21 @@
 
 (defmethod dispatcher-loop ((self dispatcher))
   (mp:ensure-process-cleanup `(%dispatcher-cleanup ,self))
-  (loop with mailbox = (mp:process-mailbox
-                        (mp:get-current-process))
-        for handle = (sys:wait-for-input-streams-returning-first
-                      (dispatcher-handles self)
-                      :wait-reason "Waiting for Zeroconf events"
-                      :wait-function #'(lambda ()
-                                         #+lispworks6.1 (mp:mailbox-not-empty-p mailbox)
-                                         #-lispworks6.1 (mp:mailbox-peek mailbox)))
-        do (with-simple-restart (abort "Return to event loop.")
-             (if handle
-                 (when (service-handle-process-result handle)
-                   (%dispatcher-remove-handle self handle))
-               (mp:process-all-events)))
-        while t))
+  (loop :for handles := (dispatcher-handles self)
+        :do
+        (mp:process-wait-local-with-periodic-checks
+         "Waiting for Zeroconf events" 0.2
+         #'(lambda ()
+             (or (some #'listen handles)
+                 (mp:mailbox-not-empty-p
+                  (mp:process-mailbox
+                   (mp:get-current-process))))))
+        (with-simple-restart (abort "Return to event loop.")
+          (dolist (handle (remove-if-not #'listen handles))
+            (when (service-handle-process-result handle)
+              (%dispatcher-remove-handle self handle)))
+          (mp:process-all-events))
+        :while t))
 
 (defmethod dispatcher-start ((self dispatcher))
   (when (dispatcher-running-p self)
@@ -61,26 +62,32 @@
     (setf (dispatcher-process self) process))
   self)
 
+(defmethod dispatcher-send ((self dispatcher) object)
+  (with-slots (process) self
+    (mp:process-send process object)
+    (mp:process-poke process)))
+
 (defmethod dispatcher-stop ((self dispatcher))
   (if (dispatcher-running-p self)
-      (let ((process (dispatcher-process self)))
-        (mp:process-send process
+      (progn
+        (dispatcher-send self
                          #'(lambda ()
                              (mp:process-kill
                               (mp:get-current-process))))
-        (mp:process-join process :timeout 10))
+        (mp:process-join (dispatcher-process self)
+                         :timeout 10))
     (warn "Zeroconf Dispatcher not running"))  
   self)
 
 (defmethod dispatcher-add-handle ((self dispatcher) handle)
   (check-type handle handle)
-  (mp:process-send (dispatcher-process self)
+  (dispatcher-send self
                    `(%dispatcher-add-handle ,self ,handle))
   handle)
 
 (defmethod dispatcher-remove-handle ((self dispatcher) handle)
   (check-type handle handle)
-  (mp:process-send (dispatcher-process self)
+  (dispatcher-send self
                    `(%dispatcher-remove-handle ,self ,handle)))
 
 (defmethod print-object ((self dispatcher) stream)
