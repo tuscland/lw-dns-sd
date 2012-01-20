@@ -28,6 +28,25 @@
                    (dispatcher-handles self)))
     (%dispatcher-remove-handle self handle)))
 
+#+macosx
+(defmethod dispatcher-loop ((self dispatcher))
+  (mp:ensure-process-cleanup `(%dispatcher-cleanup ,self))
+  (loop :with mailbox := (mp:process-mailbox
+                          (mp:get-current-process))
+        :for handle := (sys:wait-for-input-streams-returning-first
+                        (dispatcher-handles self)
+                        :wait-reason "Waiting for Zeroconf events"
+                        :wait-function #'(lambda ()
+                                           #+lispworks6.1 (mp:mailbox-not-empty-p mailbox)
+                                           #-lispworks6.1 (mp:mailbox-peek mailbox)))
+        :do (with-simple-restart (abort "Return to event loop.")
+              (if handle
+                  (when (service-handle-process-result handle)
+                    (%dispatcher-remove-handle self handle))
+                (mp:process-all-events)))
+        :while t))
+
+#+win32
 (defmethod dispatcher-loop ((self dispatcher))
   (mp:ensure-process-cleanup `(%dispatcher-cleanup ,self))
   (loop :for handles := (dispatcher-handles self)
