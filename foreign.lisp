@@ -8,6 +8,7 @@
                                pointer
                                :end2 length)))
 
+
 #+lispworks6.1
 (defun fli-sockaddr-to-string (pointer)
   (comm:ip-address-string
@@ -21,6 +22,7 @@
           (addr-in :type '(:pointer (:struct comm::sockaddr_in6))) pointer
         (comm::sockaddr-in6-to-lisp addr-in))))))
 
+
 #+lispworks6.0
 (defun fli-sockaddr-to-string (pointer)
   (comm:ip-address-string
@@ -30,28 +32,35 @@
           (addr-in :type '(:pointer (:struct comm::sockaddr_in))) pointer
         (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr)))))))
 
+
 (fli:define-foreign-type service-ref ()
   '(:pointer :void))
 
+
 (fli:define-foreign-type record-ref ()
   '(:pointer :void))
+
 
 (fli:define-foreign-type dnssd-string ()
   `(:ef-mb-string
     :null-terminated-p t
     :external-format :utf-8))
 
+
 (fli:define-c-typedef (error-t
                        (:foreign-name "DNSServiceErrorType"))
   :int32)
+
 
 (fli:define-c-typedef (flags-t
                        (:foreign-name "DNSServiceFlags"))
   :uint32)
 
+
 (fli:define-c-typedef (protocol-t
                        (:foreign-name "DNSServiceProtocol"))
   :uint32)
+
 
 #+macosx
 (fli:define-c-struct (sockaddr
@@ -59,6 +68,7 @@
   (sa_len :uint8)
   (sa_family :uint8)
   (sa_data (:pointer :char)))
+
 
 #+win32
 (fli:define-c-struct (sockaddr
@@ -73,6 +83,7 @@
   :result-type :void
   :language :ansi-c)
 
+
 (fli:define-foreign-function (dns-service-sockfd
                               "DNSServiceRefSockFD" :source)
     ((sdref service-ref))
@@ -81,11 +92,10 @@
 
 
 (defmacro define-zeroconf-function ((name external-name) args)
-  "Declares a foreign function that returns a value of
-  type DNSServiceErrorType and defines a wrapper around the
-  foreign function that raises an error of type
-  DNS-SD-RESULT-ERROR if the foreign function returns a value
-  indicating that an error occurred."
+  "Declares a foreign function that returns a value of type
+DNSServiceErrorType and defines a wrapper around the foreign function
+that raises an error of type ZEROCONF-RESULT-ERROR if the foreign
+function returns a value indicating that an error occurred."
   (let ((unwrapped-name (intern (format nil "%~A" name)))
 	(result-var (gensym "RESULT"))
         (arg-names (mapcar #'car args)))
@@ -100,7 +110,9 @@
                ,result-var
              (raise-zeroconf-error ,result-var)))))))
 
+
 (editor:setup-indent "define-zeroconf-function" 1)
+
 
 (define-zeroconf-function (dns-service-get-property
                            "DNSServiceGetProperty")
@@ -108,9 +120,11 @@
    (result (:pointer :void))
    (size (:pointer :uint32))))
 
+
 (define-zeroconf-function (dns-service-process-result
                            "DNSServiceProcessResult")
   ((sdref service-ref)))
+
 
 (define-zeroconf-function (dns-service-add-record
                            "DNSServiceAddRecord")
@@ -122,6 +136,7 @@
    (data (:const (:pointer :void)))
    (ttl :uint32)))
 
+
 (define-zeroconf-function (dns-service-update-record
                            "DNSServiceUpdateRecord")
   ((sdref service-ref)
@@ -131,11 +146,13 @@
    (data (:const (:pointer :void)))
    (ttl :uint32)))
 
+
 (define-zeroconf-function (dns-service-remove-record
                            "DNSServiceRemoveRecord")
   ((sdref service-ref)
    (rdref record-ref)
    (flags flags-t)))
+
 
 (define-zeroconf-function (dns-service-register
                            "DNSServiceRegister")
@@ -151,6 +168,7 @@
    (txtrecord (:const (:pointer :void)))
    (callback (:pointer :function))
    (context (:pointer :void))))
+
 
 (fli:define-foreign-callable (%dns-service-register-reply
                               :result-type :void)
@@ -176,6 +194,7 @@
                      :port (service-port service)
                      :properties (service-properties service))))))
 
+
 (define-zeroconf-function (dns-service-enumerate-domains
                            "DNSServiceEnumerateDomains")
   ((sdref (:pointer service-ref))
@@ -183,6 +202,7 @@
    (interface-index :uint32)
    (callback (:pointer :function))
    (context (:pointer :void))))
+
 
 (fli:define-foreign-callable (%dns-service-enumerate-domains-reply
                               :result-type :void)
@@ -205,6 +225,7 @@
                     :name domain
                     :defaultp defaultp)))))
 
+
 (define-zeroconf-function (dns-service-browse
                            "DNSServiceBrowse")
   ((sdref (:pointer service-ref))
@@ -214,6 +235,7 @@
    (domain (:reference-pass dnssd-string :allow-null t))
    (callback (:pointer :function))
    (context (:pointer :void))))
+
 
 (fli:define-foreign-callable (%dns-service-browse-reply
                               :result-type :void)
@@ -237,6 +259,7 @@
                    :type type
                    :domain domain))))
 
+
 (define-zeroconf-function (dns-service-resolve
                            "DNSServiceResolve")
   ((sdref (:pointer service-ref))
@@ -247,6 +270,7 @@
    (domain (:reference-pass dnssd-string :allow-null t))
    (callback (:pointer :function))
    (context (:pointer :void))))
+
 
 (fli:define-foreign-callable (%dns-service-resolve-reply
                               :result-type :void)
@@ -278,6 +302,7 @@
                        :port (infra:ntohs port)
                        :properties (parse-txt-record txt-record)))))))
 
+
 (define-zeroconf-function (dns-service-get-addr-info
                            "DNSServiceGetAddrInfo")
   ((sdref (:pointer service-ref))
@@ -287,6 +312,7 @@
    (hostname (:reference-pass dnssd-string))
    (callback (:pointer :function))
    (context (:pointer :void))))
+
 
 (fli:define-foreign-callable (%dns-service-get-addr-info-reply
                               :result-type :void)
@@ -312,6 +338,7 @@
        address
        ttl))))
 
+
 (define-zeroconf-function (dns-service-query-record
                            "DNSServiceQueryRecord")
   ((sdref (:pointer service-ref))
@@ -322,6 +349,7 @@
    (rrclass :uint16)
    (callback (:pointer :function))
    (context (:pointer :void))))
+
 
 (fli:define-foreign-callable (%dns-service-query-record-reply
                               :result-type :void)

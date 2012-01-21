@@ -11,7 +11,7 @@
   (:documentation "All errors specific to Zeroconf are of this type."))
 
 (define-condition zeroconf-result-error (zeroconf-error
-                                       infra:system-error)
+                                         infra:system-error)
   ()
   (:documentation "Signaled if a foreign Zeroconf API function returns an error code."))
 
@@ -19,7 +19,7 @@
 (defmacro define-zeroconf-error (class code description)
   "Defines a Zeroconf error based on a Zeroconf API error code."
   `(dspec:def (define-zeroconf-error ,class)
-     (infra:define-system-error dns-sd-result-error ,class ,code ,description)))
+     (infra:define-system-error zeroconf-result-error ,class ,code ,description)))
 
 (editor:setup-indent 'define-zeroconf-error 1)
 
