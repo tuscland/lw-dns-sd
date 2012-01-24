@@ -52,7 +52,7 @@
   (if (= error-code +no-err+)
       (apply (service-handle-callback-function self)
              self args)
-    (raise-zeroconf-error error-code)))
+    (zeroconf-error error-code)))
 
 (defmethod service-handle-process-result ((self service-handle))
   (handler-case (%service-handle-process-result self)

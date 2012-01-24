@@ -23,11 +23,11 @@
 
 (editor:setup-indent 'define-zeroconf-error 1)
 
-(defun raise-zeroconf-error (code)
+(defun zeroconf-error (code)
   "Given a Zeroconf API error code, raises the corresponding Lisp error.
 If the code is unknown, an error of type DNS-SD-RESULT-ERROR is
 raised."
-  (infra:raise-system-error 'zeroconf-result-error code))
+  (infra:system-error 'zeroconf-result-error code))
 
 
 (define-zeroconf-error unknown-error

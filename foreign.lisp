@@ -108,7 +108,7 @@ function returns a value indicating that an error occurred."
          (let ((,result-var (,unwrapped-name ,@arg-names)))
            (if (= ,result-var +no-err+)
                ,result-var
-             (raise-zeroconf-error ,result-var)))))))
+             (zeroconf-error ,result-var)))))))
 
 
 (editor:setup-indent "define-zeroconf-function" 1)
