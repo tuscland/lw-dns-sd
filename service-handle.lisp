@@ -1,6 +1,6 @@
 (in-package #:zeroconf)
 
-(defvar *fli-reply-service-handle* nil)
+(declaim (hcl:special-dynamic *fli-reply-service-handle*))
 
 (defmacro bind-service-handle (service-handle &body body)
   `(let ((*fli-reply-service-handle* ,service-handle))

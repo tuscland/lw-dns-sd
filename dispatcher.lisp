@@ -108,8 +108,7 @@
              (dispatcher-handles self)))))
 
 
-
-(defvar *dispatcher* (make-instance 'dispatcher))
+(hcl:defglobal-variable *dispatcher* (make-instance 'dispatcher))
 
 
 (defmethod dispatch ((self service-handle))
