@@ -9,10 +9,10 @@
                (:file "conditions")
                (:file "txt-record")
 
+               (:file "constants")
                (:file "common")
                (:file "service-handle")
                (:file "record-handle")
                (:file "dispatcher")
-               (:file "constants")
                (:file "foreign")
                (:file "zeroconf")))

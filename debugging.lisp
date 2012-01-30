@@ -9,11 +9,12 @@
       (capi:contain
        (make-instance 'capi:collector-pane))))
 
+(defparameter *debug-collector* (get-debug-collector))
+
 (defun get-debug-stream ()
   (if *debugging-enabled*
       (capi:collector-pane-stream *debug-collector*)))
 
-(defvar *debug-collector* (get-debug-collector))
 (defparameter *debug-stream* (get-debug-stream))
 
 (defun debug-print (&rest args)
