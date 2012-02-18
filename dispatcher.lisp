@@ -112,6 +112,8 @@
 
 
 (defmethod dispatch ((self service-handle))
+  (when (not (dispatcher-running-p *dispatcher*))
+    (start))
   (dispatcher-add-handle *dispatcher* self))
 
 
