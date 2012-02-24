@@ -31,6 +31,7 @@
            #:service-host
            #:service-port
            #:service-properties
+           #:service-eq
 
            #:record
            #:make-record
