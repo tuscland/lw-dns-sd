@@ -1,20 +1,20 @@
 (in-package #:zeroconf)
 
-(defclass record-handle (handle)
+(defclass record-operation (operation)
   ())
 
-(defmethod record-add ((service-handle service-handle) record)
+(defmethod record-add ((service-operation service-operation) (record record))
   )
 
-(defmethod record-update ((service-handle service-handle)
-                          (record-handle record-handle)
-                          record)
+(defmethod record-update ((service-operation service-operation)
+                          (record-operation record-operation)
+                          (record record))
   )
 
-(defmethod record-remove ((service-handle service-handle)
-                          (record-handle record-handle))
+(defmethod record-remove ((service-operation service-operation)
+                          (record-operation record-operation))
   (dns-service-remove-record
-   (handle-ref service-handle)
-   (handle-ref record-handle)
+   (operation-handle service-operation)
+   (operation-handle record-operation)
    0)
-  (setf (slot-value record-handle 'ref) nil))
+  (setf (slot-value record-operation 'handle) nil))

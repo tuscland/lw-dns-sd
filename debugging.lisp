@@ -1,6 +1,12 @@
 (in-package #:zeroconf)
 
 
+(defun debugging-callback (prefix)
+  #'(lambda (&rest args)
+;;;; FIXME: why does *debug-io* not work as intended?
+;;;; there is no output.
+      (format t "~&~A: ~{~A~^, ~}~%" prefix args)))
+
 (defparameter *debugging-enabled* nil)
 
 

@@ -22,3 +22,29 @@
     (let ((result (%if-index-to-name index name)))
       (unless (fli:pointer-eq result fli:*null-pointer*)
         (fli:convert-from-foreign-string name)))))
+
+(fli:define-c-struct (if-nameindex
+                      (:foreign-name "if_nameindex"))
+  (index (:unsigned :int))
+  (name (:pointer :char)))
+
+(fli:define-foreign-function (%if-nameindex "if_nameindex" :source)
+    ()
+  :result-type (:ptr (:struct if-nameindex))
+  :language :ansi-c)
+
+(fli:define-foreign-function (%if-freenameindex "if_freenameindex" :source)
+    ((ptr (:pointer (:struct if-nameindex))))
+  :result-type :void
+  :language :ansi-c)
+
+(defun if-name-index ()
+  (let ((result (%if-nameindex)))
+    (unless (fli:null-pointer-p result)
+      (loop :for index := (fli:foreign-slot-value result 'index)
+            :while (not (zerop index))
+            :collect (cons index
+                           (fli:convert-from-foreign-string
+                            (fli:foreign-slot-value result 'name)))
+            :do (fli:incf-pointer result)
+            :finally (%if-freenameindex result)))))

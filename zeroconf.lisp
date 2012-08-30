@@ -8,17 +8,18 @@
     (dns-service-get-property *property-daemon-version* result size)
     (fli:dereference result)))
 
-;;;; Callback: (handle operation service)
-;;;; Where:    operation = [:add | :conflict]
-(defun register (callback-function error-function
-                 service
-                 &key (no-auto-rename nil))
+;;;; Callback: (operation register-result)
+(defun register (service
+                 &key callback
+                      no-auto-rename)                 
   (check-type (service-interface-index service) (integer 0))
   (when (service-name service)
-    (check-type (service-name service) string))
+    (check-type (service-name service) string)
+    (assert (< (length (service-name service)) +max-service-name-length+)))
   (check-type (service-type service) string)
   (when (service-domain service)
-    (check-type (service-domain service) string))
+    (check-type (service-domain service) string)
+    (assert (< (length (service-domain service)) +max-domain-name-length+)))
   (when (service-host service)
     (check-type (service-host service) string))
   (check-type (service-port service) (integer 0))
@@ -36,78 +37,75 @@
                               (service-type service)
                               (service-domain service)
                               (service-host service)
-                              (infra:htons
-                               (service-port service))
+                              (infra:htons (service-port service))
                               (length txt-record)
                               txt-ptr
                               (infra:make-callback-pointer '%dns-service-register-reply)
                               nil))
       (dispatch
-       (make-instance 'service-handle
-                      :ref (fli:dereference ptr)
-                      :callback-function callback-function
-                      :error-function error-function
-                      :user-info (copy-service service))))))
+       (make-instance 'service-operation
+                      :handle (fli:dereference ptr)
+                      :callback callback
+                      :service-prototype (copy-service service))))))
 
-(defvar *enumerated-domain-flags* `((:registration . ,+flag-registration-domains+)
-                                    (:browse       . ,+flag-browse-domains+)))
+(defvar *enumerated-domains-flags* `((:registration-domains . ,+flag-registration-domains+)
+                                     (:browse-domains       . ,+flag-browse-domains+)))
 
-
-;;;; Callback: (handle operation defaultp more-coming-p domain)
-;;;; Where:    operation = [:add | :remove]
-(defun enumerate-domains (callback-function error-function
-                          &key (interface-index 0) (domain :browse))
+;;;; Callback: (operation enumerate-domains-result)
+(defun enumerate-domains (&key callback
+                               (interface-index +interface-index-any+)
+                               (domains :browse-domains))
   (check-type interface-index (integer 0))
-  (assert (member domain *enumerated-domain-flags* :key #'car)
-      (domain)
-    "Keyword argument :DOMAIN ~A is not a member of ~A."
-    domain (mapcar #'car *enumerated-domain-flags*))
+  (assert (member domains *enumerated-domains-flags* :key #'car)
+      (domains)
+    "Keyword argument DOMAINS ~A is not a member of ~A."
+    domains (mapcar #'car *enumerated-domains-flags*))
   (fli:with-dynamic-foreign-objects ((ptr service-ref))
     (dns-service-enumerate-domains
      ptr
-     (cdr
-      (assoc domain *enumerated-domain-flags*))
+     (cdr (assoc domains *enumerated-domains-flags*))
      interface-index
      (infra:make-callback-pointer '%dns-service-enumerate-domains-reply)
      nil)
     (dispatch
-     (make-instance 'service-handle
-                    :ref (fli:dereference ptr)
-                    :callback-function callback-function
-                    :error-function error-function))))
+     (make-instance 'service-operation
+                    :handle (fli:dereference ptr)
+                    :callback callback))))
 
-;;;; Callback: (handle operation more-coming-p service)
-;;;; Where:    operation = [:add | :remove]
-(defun browse (callback-function error-function
-               type
-               &key (interface-index 0) (domain nil))
+;;;; Callback: (operation browse-result)
+(defun browse (type
+               &key callback
+                    (domain (make-domain :name "local.")))
   (check-type type string)
-  (check-type interface-index (integer 0))
   (when domain
-    (check-type domain string))
+    (check-type domain domain)
+    (assert (< (length (domain-name domain)) +max-domain-name-length+)))
   (fli:with-dynamic-foreign-objects ((ptr service-ref))
     (dns-service-browse ptr
                         0
-                        interface-index
+                        (domain-interface-index domain)
                         type
-                        domain
+                        (domain-name domain)
                         (infra:make-callback-pointer '%dns-service-browse-reply)
                         nil)
     (dispatch
-     (make-instance 'service-handle
-                    :ref (fli:dereference ptr)
-                    :callback-function callback-function
-                    :error-function error-function))))
+     (make-instance 'service-operation
+                    :handle (fli:dereference ptr)
+                    :callback callback))))
 
-;;;; Callback: (handle more-coming-p service)
-(defun resolve (callback-function error-function
-                service
-                &key (resolve-on-all-interfaces t) (force-multicast nil))
+;;;; Callback: (operation resolve-result)
+(defun resolve (service
+                &key callback
+                     (resolve-on-all-interfaces t)
+                     force-multicast)
   (unless resolve-on-all-interfaces
     (check-type (service-interface-index service) (integer 0)))
   (check-type (service-name service) string)
+  (assert (< (length (service-name service)) +max-service-name-length+))
   (check-type (service-type service) string)
-  (check-type (service-domain service) string)
+  (when (service-domain service)
+    (check-type (service-domain service) string)
+    (assert (< (length (service-domain service)) +max-domain-name-length+)))
   (fli:with-dynamic-foreign-objects ((ptr service-ref))
     (dns-service-resolve ptr
                          (if force-multicast
@@ -122,19 +120,19 @@
                          (infra:make-callback-pointer '%dns-service-resolve-reply)
                          nil)
     (dispatch
-     (make-instance 'service-handle
-                    :ref (fli:dereference ptr)
-                    :callback-function callback-function
-                    :error-function error-function
-                    :user-info (copy-service service)
+     (make-instance 'service-operation
+                    :handle (fli:dereference ptr)
+                    :callback callback
+                    :service-prototype (copy-service service)
                     :cancel-after-reply t))))
 
-;;;; Callback: (handle operation more-coming-p interface-index hostname address ttl)
-;;;; Where:    operation = [:add | :invalid]
-(defun get-addr-info (callback-function error-function
-                      hostname
-                      &key (interface-index 0) (protocol +protocol-ipv4+)
-                           (force-multicast nil) (long-lived-query nil))
+;;;; Callback: (operation get-addr-info-result)
+(defun get-addr-info (hostname
+                      &key callback
+                           (interface-index +interface-index-any+)
+                           (protocol +protocol-ipv4+)
+                           force-multicast
+                           long-lived-query)
   (fli:with-dynamic-foreign-objects ((ptr service-ref))
     (dns-service-get-addr-info ptr
                                (or (when force-multicast
@@ -148,19 +146,17 @@
                                (infra:make-callback-pointer '%dns-service-get-addr-info-reply)
                                nil)
     (dispatch
-     (make-instance 'service-handle
-                    :ref (fli:dereference ptr)
-                    :callback-function callback-function
-                    :error-function error-function
+     (make-instance 'service-operation
+                    :handle (fli:dereference ptr)
+                    :callback callback
                     :cancel-after-reply t))))
 
-;;;; Callback: (handle operation more-coming-p record)
-;;;; Where:    operation = [:add | :remove]
-(defun query-record (callback-function error-function
-                     full-name type class
-                     &key (interface-index 0)
-                     (force-multicast nil)
-                     (long-lived-query nil))
+;;;; Callback: (operation query-record-result)
+(defun query-record (full-name type class
+                     &key callback
+                          (interface-index +interface-index-any+)
+                          force-multicast
+                          long-lived-query)
   (check-type full-name string)
   (check-type type integer)
   (check-type class integer)
@@ -179,16 +175,14 @@
                                (infra:make-callback-pointer '%dns-service-query-record-reply)
                                nil)
     (dispatch
-     (make-instance 'service-handle
-                    :ref (fli:dereference ptr)
-                    :callback-function callback-function
-                    :error-function error-function))))
+     (make-instance 'service-operation
+                    :handle (fli:dereference ptr)
+                    :callback callback))))
 
 ;;;; Callback: see query-record
-(defun query-service-types (callback-function error-function
-                            &key (interface-index 0))
-  (query-record callback-function
-                error-function
+(defun query-service-types (&key callback
+                                 (interface-index +interface-index-any+))
+  (query-record callback
                 *meta-query-service-full-name*
                 +service-type-PTR+
                 +service-class-in+

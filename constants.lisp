@@ -70,6 +70,10 @@
 (defconstant +service-type-MAILA+    254)   ; Transfer mail agent records.
 (defconstant +service-type-ANY+      255)   ; Wildcard match.
 
+(defconstant +interface-index-any+        #x00000000)
+(defconstant +interface-index-local-only+ #xFFFFFFFF)
+(defconstant +interface-index-unicast+    #xFFFFFFFE)
+(defconstant +interface-index-p2p+        #xFFFFFFFD)
 
 (defconstant +protocol-ipv4+             #x001)
 (defconstant +protocol-ipv6+             #x002)
@@ -87,18 +91,15 @@
 (defconstant +flag-force-multicast+      #x400)
 (defconstant +flag-no-flag+              #x000)
 
-(defun test-flag (flag included-symbol excluded-symbol flags)
+(defconstant +max-service-name-length+   63)
+;; FIXME: checks are buggy because the length accounts for the *escaped* string
+(defconstant +max-domain-name-length+  1008)
+
+(defun flag-test (flag flags &optional (included-symbol t) excluded-symbol)
   (if (zerop (logand flag flags))
       excluded-symbol
     included-symbol))
 
-(defun symbols->flags (definitions symbols)
-  (loop with flags = 0
-        for (symbol flag) in definitions
-        when (member symbol symbols)
-        do (setq flags (logior (symbol-value flag)
-                               flags))
-        finally (return flags)))
 
 (defparameter *property-daemon-version* "DaemonVersion")
 

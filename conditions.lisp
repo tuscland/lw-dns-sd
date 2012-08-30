@@ -6,7 +6,7 @@
   description)
 
 
-(define-condition zeroconf-error (error)
+(define-condition zeroconf-error (simple-error)
   ()
   (:documentation "All errors specific to Zeroconf are of this type."))
 
