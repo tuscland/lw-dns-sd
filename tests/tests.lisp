@@ -7,10 +7,8 @@
 (defparameter *test-service-type* "_test._udp")
 (defparameter *test-service-port* 9999)
 
-(defun make-test-service ()
-  (make-service :type *test-service-type* :port *test-service-port*))
-
-(defparameter *test-service* (make-test-service))
+(defun make-test-service (&optional name)
+  (make-service :name name :type *test-service-type* :port *test-service-port*))
 
 (test if-name
   (let ((interfaces (if-name-index)))
@@ -24,7 +22,7 @@
   (signals zeroconf-error (zeroconf-error -65537)))
 
 (test service-predicate
-  (is (service-p *test-service*)))
+  (is (service-p (make-test-service))))
 
 (test service-equal
   (let ((service1 (make-test-service))
@@ -64,7 +62,7 @@
 (test (registration-conflict :depends-on register-service)
   (stop)
   ;; 1. register a dummy service, automatically named
-  (let* ((service *test-service*)
+  (let* ((service (make-test-service))
          (operation (register service))
          (result (operation-next-result operation))
          (name (service-name
@@ -95,7 +93,7 @@
     (is-true (cancel operation))))
 
 (test (registration-identical-service-timeout :depends-on registration-conflict)
-  (let* ((service *test-service*)
+  (let* ((service (make-test-service))
          (operation (register service))
          (result (operation-next-result operation)))
     (let* ((conflict-service (copy-service (register-result-service result)))
@@ -120,7 +118,7 @@
 
 (test (browse :depends-on enumerate-browse-domains)
   (stop)
-  (let* ((register-operation (register *test-service*))
+  (let* ((register-operation (register (make-test-service "Browse Test Service")))
          (register-result (operation-next-result register-operation)))
     (is (register-result-p register-result))
     (let* ((browse-operation
@@ -149,7 +147,7 @@
       (is-true (cancel browse-operation)))))
 
 (test (resolve :depends-on browse)
-  (let* ((register-operation (register *test-service*))
+  (let* ((register-operation (register (make-test-service "Resolve Test Service")))
          (register-result (operation-next-result register-operation)))
     (is (register-result-p register-result))
     (let* ((browse-operation
@@ -163,8 +161,17 @@
       (let* ((resolve-operation (resolve (browse-result-service browse-result)))
              (resolve-result (operation-next-result resolve-operation)))
         (is (resolve-result-p resolve-result))
-        (is (service-equal (resolve-result-service resolve-result)
-                           (register-result-service register-result)))
+        (let ((resolved-service (resolve-result-service resolve-result))
+              (registered-service (register-result-service register-result)))
+          (is (string-equal (service-name resolved-service)
+                            (service-name registered-service)))
+          (is (string-equal (service-type resolved-service)
+                            (service-type registered-service)))
+          (is (string-equal (service-domain resolved-service)
+                            (service-domain registered-service)))
+          (is (stringp (service-host resolved-service)))
+          (is (= (service-port registered-service)
+                 (service-port resolved-service))))
         (is-false (cancel resolve-operation)))
       (is-true (cancel browse-operation)))
     (is-true (cancel register-operation))))
