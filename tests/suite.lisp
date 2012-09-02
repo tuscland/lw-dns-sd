@@ -4,5 +4,5 @@
 
 (def-suite zeroconf)
 
-(defmethod asdf:perform ((op asdf:test-op) (system (eql (asdf:find-system :zeroconf-tests))))
+(defun run-tests ()
   (eos:run! 'zeroconf))

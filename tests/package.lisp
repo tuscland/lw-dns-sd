@@ -1,2 +1,3 @@
 (defpackage #:zeroconf-tests
-  (:use #:cl #:eos #:zeroconf))
+  (:use #:cl #:eos #:zeroconf)
+  (:export #:run-tests))

@@ -1,5 +1,7 @@
 ;;;; package.lisp
 
+(require "comm")
+
 (defpackage #:zeroconf
   (:nicknames #:zc)
   (:use #:cl)

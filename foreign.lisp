@@ -8,6 +8,7 @@
                                pointer
                                :end2 length)))
 
+
 #+lispworks6.1
 (defun fli-sockaddr-to-string (pointer)
   (comm:ip-address-string
