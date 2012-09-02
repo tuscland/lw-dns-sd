@@ -10,6 +10,7 @@
   `(let ((,operation *fli-reply-service-operation*))
      ,@body))
 
+
 (defclass service-operation (operation comm:socket-stream)
   ((callback
     :reader service-operation-callback

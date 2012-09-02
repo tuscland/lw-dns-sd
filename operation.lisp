@@ -26,37 +26,3 @@
 
 (defmethod operation-cancelled-p ((self operation))
   (fli:null-pointer-p (operation-handle self)))
-
-(defstruct error-result
-  condition)
-
-(defstruct resolve-result
-  more-coming-p
-  service)
-
-(defstruct register-result
-  conflict-p
-  service)
-
-(defstruct enumerate-domains-result
-  more-coming-p
-  presence
-  domain)
-
-(defstruct browse-result
-  more-coming-p
-  presence
-  service)
-
-(defstruct get-addr-info-result
-  more-coming-p
-  invalid-p
-  interface-index
-  hostname
-  address
-  ttl)
-
-(defstruct query-record-result
-  more-coming-p
-  presence
-  record)

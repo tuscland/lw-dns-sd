@@ -1,11 +1,5 @@
 (in-package #:zeroconf)
 
-(defstruct error-info
-  class
-  code
-  description)
-
-
 (define-condition zeroconf-error (simple-error)
   ()
   (:documentation "All errors specific to Zeroconf are of this type."))
@@ -15,20 +9,16 @@
   ()
   (:documentation "Signaled if a foreign Zeroconf API function returns an error code."))
 
-
 (defmacro define-zeroconf-error (class code description)
   "Defines a Zeroconf error based on a Zeroconf API error code."
   `(dspec:def (define-zeroconf-error ,class)
      (infra:define-system-error zeroconf-result-error ,class ,code ,description)))
-
-(editor:setup-indent 'define-zeroconf-error 1)
 
 (defun zeroconf-error (code)
   "Given a Zeroconf API error code, raises the corresponding Lisp error.
 If the code is unknown, an error of type DNS-SD-RESULT-ERROR is
 raised."
   (infra:system-error 'zeroconf-result-error code))
-
 
 (define-zeroconf-error unknown-error
   -65537
