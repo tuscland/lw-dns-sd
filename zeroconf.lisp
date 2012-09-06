@@ -182,8 +182,8 @@
 ;;;; Callback: see query-record
 (defun query-service-types (&key callback
                                  (interface-index +interface-index-any+))
-  (query-record callback
-                *meta-query-service-full-name*
+  (query-record *meta-query-service-full-name*
                 +service-type-PTR+
                 +service-class-in+
-                :interface-index interface-index))
+                :interface-index interface-index
+                :callback callback))
