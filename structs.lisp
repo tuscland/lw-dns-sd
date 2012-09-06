@@ -45,6 +45,9 @@
        (= (domain-interface-index domain1)
           (domain-interface-index domain2))))
 
+(defun result-more-coming-p (result)
+  (slot-value result 'more-coming-p))
+
 (defstruct error-result
   condition)
 

@@ -2,7 +2,7 @@
   :members (("infra" :type :system)
             "package"
             "debugging"
-            "network-utilities"
+            "utils"
             "conditions"
             "txt-record"
             "constants"

@@ -60,8 +60,10 @@
 
            #:operation
            #:operation-next-result
+           #:operation-collect-results
            #:operation-cancelled-p
-           #:*default-operation-next-result-timeout*
+           #:with-operation
+           #:*default-operation--timeout*
 
            #:error-result
            #:error-result-p
