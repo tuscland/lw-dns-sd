@@ -147,17 +147,15 @@
       (is-true (cancel browse-operation)))))
 
 (test (resolve :depends-on browse)
+  (stop)
   (let* ((register-operation (register (make-test-service "Resolve Test Service")))
          (register-result (operation-next-result register-operation)))
-    (is (register-result-p register-result))
     (let* ((browse-operation
             (browse *test-service-type*
                     :domain (make-domain
                              :name (service-domain
                                     (register-result-service register-result)))))
            (browse-result (operation-next-result browse-operation)))
-      (is (browse-result-p browse-result))
-      (is (eq :add (browse-result-presence browse-result)))
       (let* ((resolve-operation (resolve (browse-result-service browse-result)))
              (resolve-result (operation-next-result resolve-operation)))
         (is (resolve-result-p resolve-result))
@@ -172,6 +170,31 @@
           (is (stringp (service-host resolved-service)))
           (is (= (service-port registered-service)
                  (service-port resolved-service))))
+        (is-false (cancel resolve-operation)))
+      (is-true (cancel browse-operation)))
+    (is-true (cancel register-operation))))
+
+(test (get-addr-info :depends-on resolve)
+  (stop)
+  (let* ((register-operation (register (make-test-service "GetAddrInfo Test Service")))
+         (register-result (operation-next-result register-operation)))
+    (let* ((browse-operation
+            (browse *test-service-type*
+                    :domain (make-domain
+                             :name (service-domain
+                                    (register-result-service register-result)))))
+           (browse-result (operation-next-result browse-operation)))
+      (let* ((resolve-operation (resolve (browse-result-service browse-result)))
+             (resolve-result (operation-next-result resolve-operation)))
+        (let* ((hostname (service-host
+                          (resolve-result-service resolve-result)))
+               (get-addr-info-operation (get-addr-info hostname))
+               (get-addr-info-result (operation-next-result get-addr-info-operation)))
+          (is-true (get-addr-info-result-p get-addr-info-result))
+          (is (string-equal (get-addr-info-result-hostname get-addr-info-result)
+                            hostname))
+          (is (stringp (get-addr-info-result-address get-addr-info-result)))
+          (is-false (cancel get-addr-info-operation)))
         (is-false (cancel resolve-operation)))
       (is-true (cancel browse-operation)))
     (is-true (cancel register-operation))))
