@@ -1,5 +1,8 @@
 (in-package #:zeroconf)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require "comm"))
+
 (defun fli-make-array-from-bytes (pointer length)
   (let ((array (make-array length
                            :element-type '(unsigned-byte 8)
