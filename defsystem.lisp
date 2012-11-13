@@ -17,14 +17,22 @@
             "foreign"
             "zeroconf")
   :rules ((:in-order-to :compile "package"
-           (:requires (:load "infra")))
+           (:requires
+            (:load "infra")))
+          (:in-order-to :compile :all
+           (:requires
+            (:load "package")))
           (:in-order-to :compile "structs"
-           (:requires (:load "constants")))
+           (:requires
+            (:load "constants")))
           (:in-order-to :compile "service-operation"
-           (:requires (:load "structs")))
+           (:requires
+            (:load "structs")))
           (:in-order-to :compile "foreign"
-           (:requires (:load "structs")
-                      (:load "service-operation")))))
+           (:requires
+            (:load "constants")
+            (:load "structs")
+            (:load "service-operation")))))
 
 (defsystem zeroconf-tests
   (:default-pathname "tests")
