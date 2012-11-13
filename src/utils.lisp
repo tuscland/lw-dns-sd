@@ -52,10 +52,11 @@
 (defun if-name-index ()
   (let ((result (%if-nameindex)))
     (unless (fli:null-pointer-p result)
-      (loop :for index := (fli:foreign-slot-value result 'index)
+      (loop :with nameindex := (fli:copy-pointer result)
+            :for index := (fli:foreign-slot-value nameindex 'index)
             :while (not (zerop index))
             :collect (cons index
                            (fli:convert-from-foreign-string
-                            (fli:foreign-slot-value result 'name)))
-            :do (fli:incf-pointer result)
+                            (fli:foreign-slot-value nameindex 'name)))
+            :do (fli:incf-pointer nameindex)
             :finally (%if-freenameindex result)))))
