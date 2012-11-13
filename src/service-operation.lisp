@@ -17,12 +17,12 @@
     :initform nil
     :initarg :callback)
    (service-prototype
-    :initform nil
     :reader service-operation-service-prototype
+    :initform nil
     :initarg :service-prototype)
    (cancel-after-reply-p
-    :initform nil
     :reader service-operation-cancel-after-reply-p
+    :initform nil
     :initarg :cancel-after-reply))
   (:default-initargs
    :direction :input))
@@ -33,7 +33,7 @@
 
 (defmethod %cancel ((self service-operation))
   (if (operation-cancelled-p self)
-      (warn "Operation has already been cancelled")
+      (warn "Operation ~A has already been canceled" self)
     (progn
       (dns-service-deallocate (operation-handle self))
       (setf (slot-value self 'handle) nil))))
