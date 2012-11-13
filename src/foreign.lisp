@@ -5,8 +5,7 @@
 
 (defun fli-make-array-from-bytes (pointer length)
   (let ((array (make-array length
-                           :element-type '(unsigned-byte 8)
-                           :allocation :static)))
+                           :element-type '(unsigned-byte 8))))
     (fli:replace-foreign-array array
                                pointer
                                :end2 length)))
