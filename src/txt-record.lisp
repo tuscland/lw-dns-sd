@@ -1,4 +1,15 @@
-(in-package #:zeroconf)
+(defpackage com.wildora.dnssd.txt-record)
+(in-package #:com.wildora.dnssd.txt-record)
+
+(defun bytes-to-string (sequence &key (start 0) (end (length sequence)) (external-format :utf-8))
+  "Converts a sequence of bytes (unsigned-byte 8) to a string using ~
+   the implementation's default character encoding."
+  (ef:decode-external-string sequence external-format :start start :end end))
+
+(defun string-to-bytes (string)
+  "Converts a string to a sequence of bytes (unsigned-byte 8) using ~
+   the implementation's default character encoding."
+  (ef:encode-lisp-string string :utf-8))
 
 ;; Section 6.1 of
 ;; http://files.dns-sd.org/draft-cheshire-dnsext-dns-sd.txt claims
@@ -23,22 +34,21 @@
 	   (apply #'concatenate 'vector args)))
     ;; RFC 1035 doesn't allow a TXT record to contain *zero* strings,
     ;; so a single empty string is the smallest legal DNS TXT record.
-    (unless properties
-      (setq properties (list nil)))
-    (let ((sequence (reduce #'concat
-                            (mapcar #'(lambda (property)
-                                        (let ((sub-record (build-property-sub-record property)))
-                                          (assert (<= (length sub-record) 255))
-                                          (concatenate 'vector
-                                                       (vector (length sub-record))
-                                                       sub-record)))
-                                    properties))))
-      ;; array must be static so it can be made available to FLI as a pointer
-      (make-array (length sequence)
-                  :element-type '(unsigned-byte 8)
-                  :initial-contents sequence
-                  :allocation :static))))
-
+   (unless properties
+     (setq properties (list nil)))
+   (let ((sequence (reduce #'concat
+                           (mapcar #'(lambda (property)
+                                       (let ((sub-record (build-property-sub-record property)))
+                                         (assert (<= (length sub-record) 255))
+                                         (concatenate 'vector
+                                                      (vector (length sub-record))
+                                                      sub-record)))
+                                   properties))))
+     ;; array must be static so it can be made available to FLI as a pointer
+     (make-array (length sequence)
+                 :element-type '(unsigned-byte 8)
+                 :initial-contents sequence
+                 :allocation :static))))
 
 
 (defconstant +key-value-separator+ 61) ;; #\= in ASCII.

@@ -1,8 +1,8 @@
 ;;;; -*- mode: Lisp; syntax: ANSI-Common-Lisp; indent-tabs-mode: nil -*-
 
-(in-package #:zeroconf-tests)
+(in-package #:com.wildora.dnssd-tests)
 
-(def-suite zeroconf)
+(def-suite dnssd)
 
 (defun run-tests ()
-  (eos:run! 'zeroconf))
+  (eos:run! 'dnssd))

@@ -1,6 +1,7 @@
-(in-package #:zeroconf)
+(defpackage com.wildora.dnssd.constants)
+(in-package #:com.wildora.dnssd.constants)
 
-(defconstant +service-class-IN+ 1) ; Internet
+(defconstant +service-class-IN+      1)     ; Internet
 
 (defconstant +service-type-A+        1)     ; Host address.
 (defconstant +service-type-NS+       2)     ; Authoritative server.
@@ -70,37 +71,3 @@
 (defconstant +service-type-MAILA+    254)   ; Transfer mail agent records.
 (defconstant +service-type-ANY+      255)   ; Wildcard match.
 
-(defconstant +interface-index-any+        #x00000000)
-(defconstant +interface-index-local-only+ #xFFFFFFFF)
-(defconstant +interface-index-unicast+    #xFFFFFFFE)
-(defconstant +interface-index-p2p+        #xFFFFFFFD)
-
-(defconstant +protocol-ipv4+             #x001)
-(defconstant +protocol-ipv6+             #x002)
-
-(defconstant +no-err+                    #x000)
-(defconstant +flag-more-coming+          #x001)
-(defconstant +flag-add+                  #x002)
-(defconstant +flag-default+              #x004)
-(defconstant +flag-no-auto-rename+       #x008)
-(defconstant +flag-shared+               #x010)
-(defconstant +flag-unique+               #x020)
-(defconstant +flag-browse-domains+       #x040)
-(defconstant +flag-registration-domains+ #x080)
-(defconstant +flag-long-lived-query+     #x100)
-(defconstant +flag-force-multicast+      #x400)
-(defconstant +flag-no-flag+              #x000)
-
-(defconstant +max-service-name-length+   63)
-;; FIXME: checks are buggy because the length accounts for the *escaped* string
-(defconstant +max-domain-name-length+  1008)
-
-(defun flag-test (flag flags &optional (included-symbol t) excluded-symbol)
-  (if (zerop (logand flag flags))
-      excluded-symbol
-    included-symbol))
-
-
-(defparameter *property-daemon-version* "DaemonVersion")
-
-(defparameter *meta-query-service-full-name* "_services._dns-sd._udp.local.")

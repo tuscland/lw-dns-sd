@@ -1,19 +1,9 @@
-(in-package #:zeroconf)
-
-
-(defun bytes-to-string (sequence &key (start 0) (end (length sequence)) (external-format :utf-8))
-  "Converts a sequence of bytes (unsigned-byte 8) to a string using ~
-   the implementation's default character encoding."
-  (ef:decode-external-string sequence external-format :start start :end end))
-
-(defun string-to-bytes (string)
-  "Converts a string to a sequence of bytes (unsigned-byte 8) using ~
-   the implementation's default character encoding."
-  (ef:encode-lisp-string string :utf-8))
-
+(defpackage com.wildora.dnssd.if-name)
+(in-package #:com.wildora.dnssd.if-name)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant IFNAMSIZ 16)
+
   #+win32
   (fli:register-module "Iphlpapi"))
 
@@ -54,7 +44,7 @@
     (unless (fli:null-pointer-p result)
       (loop :with nameindex := (fli:copy-pointer result)
             :for index := (fli:foreign-slot-value nameindex 'index)
-            :while (not (zerop index))
+            :while (plusp index)
             :collect (cons index
                            (fli:convert-from-foreign-string
                             (fli:foreign-slot-value nameindex 'name)))

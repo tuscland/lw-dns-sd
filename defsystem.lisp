@@ -1,46 +1,61 @@
 (in-package #:cl-user)
 
-(defsystem zeroconf
+(defsystem dnssd
   (:default-pathname "src")
   :members (("infra" :type :system)
-            "package"
-            "debugging"
-            "utils"
+            "if-name"
+            "constants"
+            "result"
             "conditions"
             "txt-record"
-            "constants"
             "structs"
-            "operation"
-            "service-operation"
-;            "record-handle"
-            "dispatcher"
             "foreign"
-            "zeroconf")
-  :rules ((:in-order-to :compile "package"
+            "operation"
+            "dispatcher"
+            "foreign-high"
+            "api"
+            "package")
+  :rules ((:in-order-to :compile :all
            (:requires
             (:load "infra")))
-          (:in-order-to :compile :all
-           (:requires
-            (:load "package")))
-          (:in-order-to :compile "structs"
-           (:requires
-            (:load "constants")))
-          (:in-order-to :compile "service-operation"
-           (:requires
-            (:load "structs")))
           (:in-order-to :compile "foreign"
            (:requires
-            (:load "constants")
+            (:load "conditions")))
+          (:in-order-to :compile "operation"
+           (:requires
+            (:load "conditions")
+            (:load "foreign")
+            (:load "result")))
+          (:in-order-to :compile "dispatcher"
+           (:requires
+            (:load "operation")))
+          (:in-order-to :compile "foreign-high"
+           (:requires
+            (:load "txt-record")
             (:load "structs")
-            (:load "service-operation")))))
+            (:load "foreign")
+            (:load "operation")))
+          (:in-order-to :compile "api"
+           (:requires
+            (:load "constants")
+            (:load "dispatcher")
+            (:load "foreign-high")))
+          (:in-order-to :compile "package"
+           (:requires
+            (:load "if-name")
+            (:load "conditions")
+            (:load "structs")
+            (:load "result")
+            (:load "operation")
+            (:load "dispatcher")
+            (:load "api")))))
 
-(defsystem zeroconf-tests
+(defsystem dnssd-tests
   (:default-pathname "tests")
   :members (("eos" :type :system)
-            ("zeroconf" :type :system)
+            ("dnssd" :type :system)
             "package"
             "suite"
             "tests")
   :rules ((:in-order-to :compile :all
-           (:caused-by (:compile :previous))
            (:requires  (:load :previous)))))

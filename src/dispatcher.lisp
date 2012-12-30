@@ -1,4 +1,13 @@
-(in-package #:zeroconf)
+(defpackage com.wildora.dnssd.dispatcher
+  (:import-from #:com.wildora.dnssd.operation
+   #:operation
+   #:operation-cancelled-p
+   #:cancel-operation
+   #:process-operation
+   #:daemon-version))
+
+(in-package #:com.wildora.dnssd.dispatcher)
+
 
 (defclass dispatcher ()
   ((operations
@@ -20,7 +29,7 @@
   (setf (dispatcher-operations self)
         (remove operation
                 (dispatcher-operations self)))
-  (%cancel operation))
+  (cancel-operation operation))
 
 (defmethod %dispatcher-cleanup (process (self dispatcher))
   (dolist (operation (copy-seq
@@ -43,22 +52,23 @@
                                               #-lispworks6.1 (mp:mailbox-peek mailbox)))
         :do (with-simple-restart (abort "Return to event loop.")
               (if operation
-                  (when (service-operation-process-result operation)
+                  (when (process-operation operation)
                     (%dispatcher-remove-operation self operation))
                 (mp:process-all-events)))
         :while t))
 
 (defmethod dispatcher-start ((self dispatcher))
   (when (dispatcher-running-p self)
-    (error 'zeroconf-error :format-control "Zeroconf Dispatcher is already started."))
+    (error "DNSSD Dispatcher is already started."))
 
   #+win32 (fli:register-module "dnssd")
-  (assert (> (zeroconf:daemon-version) 0))
+  (assert (> (daemon-version) 0))
 
   (let* ((mp:*process-initial-bindings*
-          (list* (cons '*standard-output* (or mp:*background-standard-output* *standard-output*))
+          (list* (cons '*standard-output*
+                       (or mp:*background-standard-output* *standard-output*))
                  mp:*process-initial-bindings*))
-         (process (mp:process-run-function "Zeroconf Dispatcher"
+         (process (mp:process-run-function "DNSSD Dispatcher"
                                            '(:mailbox t)
                                            #'dispatcher-loop self)))
     (setf (dispatcher-process self) process))
@@ -78,17 +88,15 @@
                               (mp:get-current-process))))
         (mp:process-join (dispatcher-process self)
                          :timeout 10))
-    (warn "Zeroconf Dispatcher not running"))  
+    (warn "DNSSD Dispatcher not running"))  
   self)
 
-(defmethod dispatcher-add-operation ((self dispatcher) operation)
-  (check-type operation operation)
+(defmethod dispatcher-add-operation ((self dispatcher) (operation operation))
   (dispatcher-send self
                    `(%dispatcher-add-operation ,self ,operation))
   operation)
 
-(defmethod dispatcher-remove-operation ((self dispatcher) operation)
-  (check-type operation operation)
+(defmethod dispatcher-remove-operation ((self dispatcher) (operation operation))
   (dispatcher-send self
                    `(%dispatcher-remove-operation ,self ,operation)))
 
@@ -100,20 +108,30 @@
             (length
              (dispatcher-operations self)))))
 
-(hcl:defglobal-variable *dispatcher* (make-instance 'dispatcher))
 
-(defmethod dispatch ((self service-operation))
+;;;;
+;;;; Public interface
+;;;;
+
+(hcl:defglobal-variable *dispatcher*
+  (make-instance 'dispatcher))
+
+(defmethod dispatch ((self operation))
   ;; TODO: warn?
   (when (not (dispatcher-running-p *dispatcher*))
     (start))
   (dispatcher-add-operation *dispatcher* self))
 
-(defmethod cancel ((self service-operation))
-  ;; return t if the handle is not yet cancelled
+(defmethod cancel ((self operation))
+  ;; return t if the operation was not yet cancelled
   (prog1
-      (not (null
-            (operation-handle self)))
+      (not (operation-cancelled-p self))
     (dispatcher-remove-operation *dispatcher* self)))
+
+(defun dispatch-operation (&rest operation-initargs)
+  (let ((operation (apply #'make-instance 'operation
+                          operation-initargs)))
+    (dispatch operation)))
 
 (defun start ()
   ;; TODO: support start completion notification
