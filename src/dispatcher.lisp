@@ -8,28 +8,31 @@
 
 (in-package #:com.wildora.dnssd.dispatcher)
 
-(hcl:defglobal-variable *operations* nil)
-(hcl:defglobal-variable *process* nil)
+(defglobal-variable *operations* nil)
+(defglobal-variable *process* nil)
+(defglobal-variable *cancel-operation-lock* (mp:make-lock :sharing t))
 (defconstant +process-join-timeout+ 10)
 
 
-(defmethod %add-operation (operation)
+(defun %add-operation (operation)
   (push operation *operations*))
 
-(defmethod %remove-operation (operation)
+(defun %remove-operation (operation &optional (removal-callback #'do-nothing))
   (setf *operations*
         (remove operation *operations*))
-  (cancel-operation operation))
+  (cancel-operation operation)
+  (funcall removal-callback))
 
-(defmethod %cleanup (process)
+(defun %cleanup (process)
+  (declare (ignore process))
   (dolist (operation (copy-seq *operations*))
     (%remove-operation operation)))
 
-(defmethod dispatcher-wait-reason ()
+(defun dispatcher-wait-reason ()
   (format nil "Waiting, ~[no~:;~:*~D~] pending operation~:P"
           (length *operations*)))
 
-(defmethod dispatcher-loop ()
+(defun dispatcher-loop ()
   (mp:ensure-process-cleanup `%cleanup)
   (loop :with mailbox := (mp:process-mailbox (mp:get-current-process))
         :for operation := (sys:wait-for-input-streams-returning-first
@@ -42,42 +45,61 @@
               (if operation
                   (when (process-operation operation)
                     (%remove-operation operation))
-                (mp:process-all-events)))
+                  (mp:process-all-events)))
         :while t))
 
-(defmethod dispatcher-send (form)
+(defun dispatcher-send (form)
+  (assert (not (null *process*))
+      ()
+    "DNSSD Dispatcher not running")
   (mp:process-send *process* form)
   (mp:process-poke *process*))
 
-(defmethod dispatcher-add-operation ((operation operation))
+(defun dispatcher-add-operation (operation)
   (dispatcher-send
    `(%add-operation ,operation))
   operation)
 
-(defmethod dispatcher-remove-operation ((operation operation))
+(defun dispatcher-remove-operation (operation removal-callback)
   (dispatcher-send
-   `(%remove-operation ,operation)))
+   `(%remove-operation ,operation ,removal-callback)))
 
 
 ;;;;
 ;;;; Public interface
 ;;;;
 
-(defmethod cancel ((operation operation))
-  ;; return t if the operation was not yet cancelled
-  (prog1
-      (not (operation-cancelled-p operation))
-    (dispatcher-remove-operation operation)))
+(define-condition cancel-timeout-error (dnssd-error)
+  ()
+  (:default-initargs
+   :format-control "Waiting for operation event timed out"))
+
+(defparameter *default-cancel-timeout* 60)
+
+(defmethod cancel ((operation operation)
+                   &key callback
+                        (timeout *default-cancel-timeout*))
+  (let (finished-waiting)
+    (dispatcher-remove-operation operation
+                                 (or callback
+                                     #'(lambda ()
+                                         (setf finished-waiting t))))
+    (when (not (null callback))
+      (mp:process-wait-with-timeout "Waiting for operation to be cancelled."
+                                    timeout
+                                    #'(lambda ()
+                                        finished-waiting))))
+  (values))
 
 (defun dispatch (&rest operation-initargs)
   (dispatcher-add-operation
    (apply #'make-instance 'operation
           operation-initargs)))
 
-(defmethod dispatcher-running-p ()
+(defun dispatcher-running-p ()
   (mp:process-alive-p *process*))
 
-(defmethod dispatcher-start ()
+(defun dispatcher-start ()
   (when (dispatcher-running-p)
     (error "DNSSD Dispatcher is already started."))
 
@@ -90,14 +112,15 @@
                                  #'dispatcher-loop))
   (values))
 
-(defmethod dispatcher-stop ()
+(defun dispatcher-stop ()
   (if (dispatcher-running-p)
       (progn
         (dispatcher-send #'(lambda ()
                              (mp:process-kill
                               (mp:get-current-process))))
         (mp:process-join *process*
-                         :timeout +process-join-timeout+))
+                         :timeout +process-join-timeout+)
+        (setf *process* nil))
     (warn "DNSSD Dispatcher not running"))  
   (values))
 

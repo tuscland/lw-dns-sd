@@ -160,10 +160,7 @@
         (finishes
           (operation-wait-event browse-operation
                                 :test (match-service-presence :add service)))
-        (is-true (cancel operation))
-        (mp:process-wait "Waiting for registered operation to be cancelled."
-                         #'(lambda ()
-                             (operation-cancelled-p operation)))
+        (cancel operation) ; called with no callback is blocking
         (finishes
           (operation-wait-event browse-operation
                                 :test (match-service-presence :remove service)))))))
@@ -179,8 +176,7 @@
                                                  :test (match-service-presence :add registered-service))))
         (let* ((resolve-operation (resolve (event-property browse-event :service)))
                (resolve-event (operation-wait-event resolve-operation)))
-          (funcall test-function registered-service resolve-event)
-          (is-false (cancel resolve-operation)))))))
+          (funcall test-function registered-service resolve-event))))))
 
 (test (resolve :depends-on browse)
   (register-browse-and-resolve
@@ -208,8 +204,7 @@
               (event (operation-wait-event operation)))
           (is (string= (event-property event :hostname)
                        hostname))
-          (is (stringp (event-property event :address)))
-          (is-false (cancel operation))))))
+          (is (stringp (event-property event :address)))))))
 
 (test (nat-port-mapping-create :depends-on dispatch-run)
   (with-dispatcher
@@ -218,5 +213,4 @@
       (is (stringp (event-property event :external-address)))
       (is (zerop (event-property event :internal-port)))
       (is (zerop (event-property event :external-port)))
-      (is (zerop (event-property event :ttl)))
-      (is-false (cancel operation)))))
+      (is (zerop (event-property event :ttl))))))

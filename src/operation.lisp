@@ -27,7 +27,7 @@
     (fli:dereference result)))
 
 
-(declaim (hcl:special-dynamic *current-operation*))
+(declaim (special-dynamic *current-operation*))
 
 (defun current-operation ()
   (assert (not (null *current-operation*)))
