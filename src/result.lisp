@@ -3,6 +3,9 @@
 (in-package #:com.wildora.dnssd.result)
 
 
+(defclass result ()
+  ())
+
 (defgeneric result-property (result property)
   (:method ((result result) (property symbol))
    (error "Result ~A does not have properties" result)))
@@ -14,9 +17,6 @@
 (defgeneric check-result (result)
   (:method ((result result))
    result))
-
-(defclass result ()
-  ())
 
 (defclass reply-result (result)
   ((properties
