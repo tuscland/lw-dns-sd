@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.conditions)
+(defpackage #:com.wildora.dnssd.conditions)
 (in-package #:com.wildora.dnssd.conditions)
 
 

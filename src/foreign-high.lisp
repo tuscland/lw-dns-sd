@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.foreign-high
+(defpackage #:com.wildora.dnssd.foreign-high
   (:import-from #:com.wildora.dnssd.operation
    #:current-operation
    #:operation-reply

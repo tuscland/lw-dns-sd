@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.operation
+(defpackage #:com.wildora.dnssd.operation
   (:import-from #:com.wildora.dnssd.event
    #:event
    #:check-event

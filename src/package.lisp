@@ -1,6 +1,6 @@
 ;;;; package.lisp
 
-(defpackage com.wildora.dnssd
+(defpackage #:com.wildora.dnssd
   (:nicknames #:dnssd)
   (:import-from #:com.wildora.dnssd.if-name
    #:if-name-to-index
@@ -139,5 +139,6 @@
    #:nat-port-mapping-create
    ))
 
-(defpackage dnssd-user
+(defpackage #:com.wildora.dnssd-user
+  (:nicknames #:dnssd-user)
   (:use #:cl #:dnssd))

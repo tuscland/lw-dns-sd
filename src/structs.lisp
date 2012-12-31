@@ -1,5 +1,4 @@
-(defpackage com.wildora.dnssd.structs)
-
+(defpackage #:com.wildora.dnssd.structs)
 (in-package #:com.wildora.dnssd.structs)
 
 

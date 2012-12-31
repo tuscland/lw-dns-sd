@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.event
+(defpackage #:com.wildora.dnssd.event
   (:import-from #:com.wildora.dnssd.conditions
    #:dnssd-error))
 

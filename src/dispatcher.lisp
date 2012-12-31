@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.dispatcher
+(defpackage #:com.wildora.dnssd.dispatcher
   (:import-from #:com.wildora.dnssd.operation
    #:operation
    #:operation-cancelled-p

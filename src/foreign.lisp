@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.foreign
+(defpackage #:com.wildora.dnssd.foreign
   (:import-from #:com.wildora.dnssd.conditions
    #:error-code-p
    #:dnssd-error))

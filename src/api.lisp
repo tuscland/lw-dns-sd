@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.api 
+(defpackage #:com.wildora.dnssd.api 
   (:import-from #:com.wildora.dnssd.dispatcher
    #:dispatch)
   (:import-from #:com.wildora.dnssd.foreign-high
@@ -102,7 +102,7 @@
 (defvar *meta-query-service-full-name*
   "_services._dns-sd._udp.local.")
 
-(defun query-service-types (&key callback
+(defun query-services-types (&key callback
                                  (interface-index +interface-index-any+))
   (query-record *meta-query-service-full-name*
                 +service-type-PTR+

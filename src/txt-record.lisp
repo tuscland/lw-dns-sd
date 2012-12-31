@@ -1,10 +1,12 @@
-(defpackage com.wildora.dnssd.txt-record)
+(defpackage #:com.wildora.dnssd.txt-record)
 (in-package #:com.wildora.dnssd.txt-record)
 
-(defun bytes-to-string (sequence &key (start 0) (end (length sequence)) (external-format :utf-8))
+(defun bytes-to-string (sequence &key (start 0) (end (length sequence)))
   "Converts a sequence of bytes (unsigned-byte 8) to a string using ~
    the implementation's default character encoding."
-  (ef:decode-external-string sequence external-format :start start :end end))
+  (ef:decode-external-string sequence :utf-8
+                             :start start
+                             :end end))
 
 (defun string-to-bytes (string)
   "Converts a string to a sequence of bytes (unsigned-byte 8) using ~

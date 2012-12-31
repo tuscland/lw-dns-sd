@@ -1,4 +1,4 @@
-(defpackage com.wildora.dnssd.if-name)
+(defpackage #:com.wildora.dnssd.if-name)
 (in-package #:com.wildora.dnssd.if-name)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
