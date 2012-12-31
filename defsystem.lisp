@@ -10,7 +10,7 @@
   :members (("dnssd-dependencies" :type :system)
             "if-name"
             "constants"
-            "result"
+            "event"
             "conditions"
             "txt-record"
             "structs"
@@ -23,6 +23,9 @@
   :rules ((:in-order-to :compile :all
            (:requires
             (:load "dnssd-dependencies")))
+          (:in-order-to :compile "event"
+           (:requires
+            (:load "conditions")))
           (:in-order-to :compile "foreign"
            (:requires
             (:load "conditions")))
@@ -30,7 +33,7 @@
            (:requires
             (:load "conditions")
             (:load "foreign")
-            (:load "result")))
+            (:load "event")))
           (:in-order-to :compile "dispatcher"
            (:requires
             (:load "operation")))
@@ -50,7 +53,7 @@
             (:load "if-name")
             (:load "conditions")
             (:load "structs")
-            (:load "result")
+            (:load "event")
             (:load "operation")
             (:load "dispatcher")
             (:load "api")))))
@@ -60,7 +63,6 @@
   :members (("eos" :type :system)
             ("dnssd" :type :system)
             "package"
-            "suite"
             "tests")
   :rules ((:in-order-to :compile :all
            (:requires  (:load :previous)))))

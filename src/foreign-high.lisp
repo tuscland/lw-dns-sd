@@ -401,11 +401,11 @@
     (:udp . ,+protocol-udp+)))
 
 (defun protocols-to-flags (protocols)
-  (loop :with result := 0
+  (loop :with flags := 0
         :for protocol :in protocols
-        :do (setf result (logior result
+        :do (setf flags (logior flags
                                  (cdr (assoc protocol *protocols-flags*))))
-        :finally (return result)))
+        :finally (return flags)))
 
 (defun dns-service-nat-port-mapping-create (handle-ptr interface-index protocols internal-port external-port ttl)
   (check-type interface-index (integer 0))

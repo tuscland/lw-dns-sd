@@ -42,25 +42,25 @@
    #:domain-interface-index
    #:domain-name
    #:domain-defaultp)
-  (:import-from #:com.wildora.dnssd.result
-   #:result
-   #:result-property
-   #:result-more-coming-p
-   #:reply-result
-   #:error-result)
+  (:import-from #:com.wildora.dnssd.event
+   #:event
+   #:event-properties
+   #:event-property
+   #:event-property-error
+   #:event-more-coming-p)
   (:import-from #:com.wildora.dnssd.operation
-   #:operation
-   #:operation-collect-results
-   #:operation-wait-result
+   #:operation-collect-events
+   #:operation-wait-event
    #:operation-cancelled-p
-   #:*default-result-timeout*
-   #:operation-timeout-error)
+   #:*default-event-timeout*
+   #:event-timeout-error)
   (:import-from #:com.wildora.dnssd.dispatcher
-   #:dispatcher
-   #:start
-   #:stop
-   #:running-p
-   #:cancel)
+   #:dispatcher-start
+   #:dispatcher-stop
+   #:dispatcher-running-p
+   #:dispatch
+   #:cancel
+   #:with-dispatcher)
   (:import-from #:com.wildora.dnssd.api
    #:register
    #:enumerate-domains
@@ -110,25 +110,26 @@
    #:domain-name
    #:domain-defaultp
 
-   #:result
-   #:result-property
-   #:result-more-coming-p
-   #:reply-result
-   #:error-result
+   #:event
+   #:event-properties
+   #:event-property
+   #:event-property-error
+   #:event-more-coming-p
 
    #:operation
-   #:operation-collect-results
-   #:operation-wait-result
+   #:operation-collect-events
+   #:operation-wait-event
    #:operation-cancelled-p
-   #:*default-result-timeout*
-   #:operation-timeout-error
+   #:*default-event-timeout*
+   #:event-timeout-error
 
-   #:dispatcher
-   #:start
-   #:stop
-   #:running-p
+   #:dispatcher-start
+   #:dispatcher-stop
+   #:dispatcher-running-p
+   #:dispatch
    #:cancel
-
+   #:with-dispatcher
+   
    #:register
    #:enumerate-domains
    #:browse
@@ -136,14 +137,6 @@
    #:get-addr-info
    #:query-record
    #:nat-port-mapping-create
-
-   #|           
-           #:daemon-version
-
-           #:result
-           #:error-result
-
-           #:+interface-index-any+|#
    ))
 
 (defpackage dnssd-user
