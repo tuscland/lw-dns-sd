@@ -1,19 +1,15 @@
 (in-package #:cl-user)
 
-(defsystem dnssd-dependencies
-  (:default-pathname "dependencies")
-  :members (("infra" :type :system)
-            "load"))
-
-(defsystem dnssd
+(defsystem #:dnssd
   (:default-pathname "src")
-  :members (("dnssd-dependencies" :type :system)
+  :members (("infra" :type :system)
+            "dependencies"
             "if-name"
             "constants"
-            "event"
             "conditions"
             "txt-record"
             "structs"
+            "event"
             "foreign"
             "operation"
             "dispatcher"
@@ -22,11 +18,9 @@
             "package")
   :rules ((:in-order-to :compile :all
            (:requires
-            (:load "dnssd-dependencies")))
-          (:in-order-to :compile "event"
-           (:requires
-            (:load "conditions")))
-          (:in-order-to :compile "foreign"
+            (:load "infra")
+            (:load "dependencies")))
+          (:in-order-to :compile ("event" "foreign")
            (:requires
             (:load "conditions")))
           (:in-order-to :compile "operation"
@@ -56,9 +50,12 @@
             (:load "event")
             (:load "operation")
             (:load "dispatcher")
-            (:load "api")))))
+            (:load "api")))
+          (:in-order-to :load :all
+           (:requires
+            (:load :previous)))))
 
-(defsystem dnssd-tests
+(defsystem #:dnssd-tests
   (:default-pathname "tests")
   :members (("eos" :type :system)
             ("dnssd" :type :system)
