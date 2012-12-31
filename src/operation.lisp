@@ -36,8 +36,6 @@
      ,@body))
 
 
-(require "comm")
-
 (define-condition operation-timeout-error (dnssd-error)
   ()
   (:default-initargs

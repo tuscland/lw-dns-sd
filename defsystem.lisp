@@ -1,8 +1,13 @@
 (in-package #:cl-user)
 
+(defsystem dnssd-dependencies
+  (:default-pathname "dependencies")
+  :members (("infra" :type :system)
+            "load"))
+
 (defsystem dnssd
   (:default-pathname "src")
-  :members (("infra" :type :system)
+  :members (("dnssd-dependencies" :type :system)
             "if-name"
             "constants"
             "result"
@@ -17,7 +22,7 @@
             "package")
   :rules ((:in-order-to :compile :all
            (:requires
-            (:load "infra")))
+            (:load "dnssd-dependencies")))
           (:in-order-to :compile "foreign"
            (:requires
             (:load "conditions")))
