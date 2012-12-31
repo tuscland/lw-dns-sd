@@ -11,6 +11,10 @@
   (:method ((result result))
    nil))
 
+(defgeneric check-result (result)
+  (:method ((result result))
+   result))
+
 (defclass result ()
   ())
 
@@ -42,6 +46,9 @@
     :reader error-result-error
     :initform nil
     :initarg :error)))
+
+(defmethod check-result ((self error-result))
+  (error (error-result-error self)))
 
 (defun make-operation-error-result (error)
   (make-instance 'error-result

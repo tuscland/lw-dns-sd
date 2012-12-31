@@ -1,6 +1,7 @@
 (defpackage com.wildora.dnssd.operation
   (:import-from #:com.wildora.dnssd.result
    #:result
+   #:check-result
    #:result-more-coming-p
    #:make-result
    #:make-operation-error-result)
@@ -40,7 +41,7 @@
 (define-condition operation-timeout-error (dnssd-error)
   ()
   (:default-initargs
-   :format-control "Waiting for operation result timed out."))
+   :format-control "Waiting for operation result timed out"))
 
 
 (defclass operation (comm:socket-stream)
@@ -90,13 +91,14 @@
 
 (defmethod operation-next-result ((self operation)
                                   &key (timeout *default-result-timeout*))
-  (multiple-value-bind (object flag)
-      (mp:mailbox-read (operation-results-queue self)
-                       "Waiting for next operation result"
-                       timeout)
-    (if flag
-        object
-      (error 'operation-timeout-error))))
+  (check-result
+   (multiple-value-bind (object flag)
+       (mp:mailbox-read (operation-results-queue self)
+                        "Waiting for next operation result"
+                        timeout)
+     (if flag
+         object
+       (error 'operation-timeout-error)))))
 
 (defmethod operation-collect-results ((self operation)
                                       &key (timeout *default-result-timeout*)
