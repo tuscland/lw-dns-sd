@@ -27,22 +27,29 @@
    #:service-ref
    #:flags-t
    #:error-t
+   #:protocol-t
    #:dnssd-string
    #:%dns-service-register
    #:%dns-service-enumerate-domains
    #:%dns-service-browse
    #:%dns-service-resolve
    #:%dns-service-get-addr-info
-   #:%dns-service-query-record)
+   #:%dns-service-query-record
+   #:%dns-service-nat-port-mapping-create)
   (:import-from #:com.wildora.dnssd.txt-record
    #:parse-txt-record
    #:build-txt-record))
 
 (in-package #:com.wildora.dnssd.foreign-high)
 
-(defconstant +flag-more-coming+          #x001)
-(defconstant +flag-add+                  #x002)
-(defconstant +flag-default+              #x004)
+(defconstant +protocol-ipv4+    #x001)
+(defconstant +protocol-ipv6+    #x002)
+(defconstant +protocol-udp+     #x010)
+(defconstant +protocol-tcp+     #x020)
+
+(defconstant +flag-more-coming+ #x001)
+(defconstant +flag-add+         #x002)
+(defconstant +flag-default+     #x004)
 
 (defun flag-test (flag flags
                   &optional (included-symbol t) (excluded-symbol nil))
@@ -75,15 +82,14 @@
      (type (:reference-return dnssd-string :allow-null t))
      (domain (:reference-return dnssd-string :allow-null t))
      (context (:pointer :void)))
-  (declare (ignore context sdref))
-  (let* ((operation
-          (current-operation))
-         (registered-service
-          (merge-service (operation-service-prototype operation)
+  (declare (ignore sdref context))
+  (let* ((registered-service
+          (merge-service (operation-service-prototype
+                          (current-operation))
                          :name name
                          :type type
                          :domain-name domain)))
-    (operation-reply operation
+    (operation-reply (current-operation)
                      error-code
                      nil
                      :success-p (eq (flags-get-presence flags) :add)
@@ -97,14 +103,12 @@
      (error-code error-t)
      (domain-name (:reference-return dnssd-string :allow-null t))
      (context (:pointer :void)))
-  (declare (ignore context sdref))
-  (let ((operation
-         (current-operation))
-        (domain
+  (declare (ignore sdref context))
+  (let ((domain
          (make-domain :interface-index interface-index
                       :name domain-name
                       :defaultp (flags-default-p flags))))
-    (operation-reply operation
+    (operation-reply (current-operation)
                      error-code 
                      (flags-more-coming-p flags)
                      :presence (flags-get-presence flags)
@@ -120,15 +124,13 @@
      (type (:reference-return dnssd-string :allow-null t))
      (domain (:reference-return dnssd-string))
      (context (:pointer :void)))
-  (declare (ignore context sdref))
-  (let ((operation
-         (current-operation))
-        (service
+  (declare (ignore sdref context))
+  (let ((service
          (make-service :interface-index interface-index
                        :name name
                        :type type
                        :domain-name domain)))
-    (operation-reply operation
+    (operation-reply (current-operation)
                      error-code
                      (flags-more-coming-p flags)
                      :presence (flags-get-presence flags)
@@ -146,19 +148,18 @@
      (txt-record-size :uint16)
      (txt-record-bytes (:pointer (:unsigned :char)))
      (context (:pointer :void)))
-  (declare (ignore context sdref))
-  (let* ((operation
-          (current-operation))
-         (txt-record
+  (declare (ignore sdref context))
+  (let* ((txt-record
           (make-array-from-foreign-bytes txt-record-bytes txt-record-size))
          (resolved-service
-          (merge-service (operation-service-prototype operation)
+          (merge-service (operation-service-prototype
+                          (current-operation))
                          :interface-index interface-index
                          :full-name full-name
                          :host host
                          :port (infra:ntohs port)
                          :properties (parse-txt-record txt-record))))
-    (operation-reply operation
+    (operation-reply (current-operation)
                      error-code
                      (flags-more-coming-p flags)
                      :service resolved-service)))
@@ -173,13 +174,11 @@
      (addr (:const (:pointer (:struct sockaddr))))
      (ttl :uint32)
      (context (:pointer :void)))
-  (declare (ignore context sdref))
-  (let ((operation
-         (current-operation))
-        (address
-         (when addr;(= error-code +flag-no-err+)
+  (declare (ignore sdref context))
+  (let ((address
+         (when addr
            (ip-address-from-sockaddr addr))))
-    (operation-reply operation
+    (operation-reply (current-operation)
                      error-code
                      (flags-more-coming-p flags)
                      :success-p (eq (flags-get-presence flags) :add)
@@ -201,10 +200,8 @@
      (rdata (:const (:pointer (:unsigned :char))))
      (ttl :uint32)
      (context (:pointer :void)))
-  (declare (ignore context sdref))
-  (let* ((operation
-          (current-operation))
-         (data
+  (declare (ignore sdref context))
+  (let* ((data
           (make-array-from-foreign-bytes rdata rdlen))
          (record
           (make-record :interface-index interface-index
@@ -213,12 +210,51 @@
                        :class rrclass
                        :data data
                        :ttl ttl)))
-    (operation-reply operation
+    (operation-reply (current-operation)
                      error-code
                      (flags-more-coming-p flags)
                      :presence (flags-get-presence flags)
                      :record record)))
 
+(defun flags-get-protocols (flags)
+  (remove-if #'null
+             (list (when (flag-test +protocol-tcp+ flags)
+                     :tcp)
+                   (when (flag-test +protocol-udp+ flags)
+                     :udp))))
+
+(defun ip-address-from-int32 (n)
+  (flet ((shifted-byte (n c)
+           (logand (ash n (- c)) #xFF)))
+    (format nil "~A.~A.~A.~A"
+            (shifted-byte n 0)
+            (shifted-byte n 8)
+            (shifted-byte n 16)
+            (shifted-byte n 24))))
+
+(fli:define-foreign-callable (dns-service-nat-port-mapping-create-reply
+                              :result-type :void)
+    ((sdref service-ref)
+     (flags flags-t)
+     (interface-index :uint32)
+     (error-code error-t)
+     (external-address :uint32)
+     (protocol protocol-t)
+     (internal-port :uint16)
+     (external-port :uint16)
+     (ttl :uint32)
+     (context (:pointer :void)))
+  (declare (ignore sdref context flags))
+  (let* ((address external-address))
+    (operation-reply (current-operation)
+                     error-code
+                     nil
+                     :interface-index interface-index
+                     :external-address (ip-address-from-int32 address)
+                     :protocols (flags-get-protocols protocol)
+                     :internal-port internal-port
+                     :external-port external-port
+                     :ttl ttl)))
 ;;;;
 ;;;; High level versions of operations functions
 ;;;;
@@ -320,10 +356,6 @@
      nil))
   (values))
 
-
-(defconstant +protocol-ipv4+             #x001)
-(defconstant +protocol-ipv6+             #x002)
-
 (defun dns-service-get-addr-info (handle-ptr hostname interface-index protocol broadcasting)
   (check-type interface-index (integer 0))
   (when broadcasting
@@ -353,14 +385,42 @@
   (when broadcasting
     (assert (member broadcasting
                     '(:force-multicast :long-lived-query))))
-  (let ((flags (broadcasting-option-to-flag broadcasting)))
-    (%dns-service-query-record
+  (%dns-service-query-record
      handle-ptr
-     flags
+     (broadcasting-option-to-flag broadcasting)
      interface-index
      full-name
      type
      class
      (infra:make-callback-pointer 'dns-service-query-record-reply)
-     nil))
+     nil)
+  (values))
+
+(defvar *protocols-flags*
+  `((:tcp . ,+protocol-tcp+)
+    (:udp . ,+protocol-udp+)))
+
+(defun protocols-to-flags (protocols)
+  (loop :with result := 0
+        :for protocol :in protocols
+        :do (setf result (logior result
+                                 (cdr (assoc protocol *protocols-flags*))))
+        :finally (return result)))
+
+(defun dns-service-nat-port-mapping-create (handle-ptr interface-index protocols internal-port external-port ttl)
+  (check-type interface-index (integer 0))
+  (check-type protocols list)
+  (check-type internal-port (integer 0))
+  (check-type external-port (integer 0))
+  (check-type ttl (integer 0))
+  (%dns-service-nat-port-mapping-create
+     handle-ptr
+     0
+     interface-index
+     (protocols-to-flags protocols)
+     internal-port
+     external-port
+     ttl
+     (infra:make-callback-pointer 'dns-service-nat-port-mapping-create-reply)
+     nil)
   (values))

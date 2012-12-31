@@ -9,7 +9,8 @@
    #:dns-service-browse
    #:dns-service-resolve
    #:dns-service-get-addr-info
-   #:dns-service-query-record)
+   #:dns-service-query-record
+   #:dns-service-nat-port-mapping-create)
   (:import-from #:com.wildora.dnssd.constants
    #:+service-class-IN+
    #:+service-type-PTR+))
@@ -77,6 +78,21 @@
     (dns-service-query-record handle-ptr full-name type class interface-index broadcasting)
     (dispatch-operation :handle (fli:dereference handle-ptr)
                         :callback callback)))
+
+(defun nat-port-mapping-create (internal-port
+                                &key callback
+                                     (interface-index +interface-index-any+)
+                                     (external-port 0)
+                                     protocols
+                                     (ttl 0))
+  (fli:with-dynamic-foreign-objects ((handle-ptr service-ref))
+    (dns-service-nat-port-mapping-create handle-ptr interface-index protocols internal-port external-port ttl)
+    (dispatch-operation :handle (fli:dereference handle-ptr)
+                        :callback callback
+                        :cancel-after-reply (and (zerop internal-port)
+                                                 (zerop external-port)
+                                                 (zerop ttl)
+                                                 (null protocols)))))
 
 
 ;;;;

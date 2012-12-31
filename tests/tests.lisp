@@ -93,9 +93,9 @@
           (let ((result (operation-wait-result operation
                                                :timeout +test-long-timeout+)))
             (is-true (result-property result :success-p))
-            (is (string-equal name
+            (is (not (string= name
                               (service-name
-                               (result-property result :service))))))
+                               (result-property result :service)))))))
         (is-true (cancel conflict-operation))))
     (is-true (cancel operation))))
 
@@ -157,7 +157,7 @@
   (stop)
   (let ((operation (browse "_inexistent_service_type._udp")))
     (signals operation-timeout-error
-      (operation-collect-results operation :timeout +test-timeout+))
+      (operation-wait-result operation :timeout +test-timeout+))
     (cancel operation)))
 
 (test (resolve :depends-on browse)
@@ -211,3 +211,12 @@
         (is-false (cancel resolve-operation)))
       (is-true (cancel browse-operation)))
     (is-true (cancel register-operation))))
+
+(test (nat-port-mapping-create :depends-on dispatch-run)
+  (let* ((operation (nat-port-mapping-create 0)))
+    (let ((result (operation-wait-result operation :timeout +test-timeout+)))
+      (is (stringp (result-property result :external-address)))
+      (is (zerop (result-property result :internal-port)))
+      (is (zerop (result-property result :external-port)))
+      (is (zerop (result-property result :ttl))))
+    (is-false (cancel operation))))

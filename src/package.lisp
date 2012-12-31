@@ -67,7 +67,8 @@
    #:browse
    #:resolve
    #:get-addr-info
-   #:query-record)
+   #:query-record
+   #:nat-port-mapping-create)
   (:export
    #:if-name-to-index
    #:if-index-to-name
@@ -134,6 +135,7 @@
    #:resolve
    #:get-addr-info
    #:query-record
+   #:nat-port-mapping-create
 
    #|           
            #:daemon-version

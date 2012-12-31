@@ -199,3 +199,15 @@ function returns a value indicating that an error occurred."
    (rrclass :uint16)
    (callback (:pointer :function))
    (context (:pointer :void))))
+
+(define-dnssd-function (%dns-service-nat-port-mapping-create
+                        "DNSServiceNATPortMappingCreate")
+  ((sdref (:pointer service-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (protocol protocol-t)
+   (internal-port :uint16)
+   (external-port :uint16)
+   (ttl :uint32)
+   (callback (:pointer :function))
+   (context (:pointer :void))))
