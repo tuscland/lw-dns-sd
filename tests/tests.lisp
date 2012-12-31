@@ -214,7 +214,7 @@
 
 (test (nat-port-mapping-create :depends-on dispatch-run)
   (let* ((operation (nat-port-mapping-create 0)))
-    (let ((result (operation-wait-result operation :timeout +test-timeout+)))
+    (let ((result (operation-wait-result operation :timeout +test-long-timeout+)))
       (is (stringp (result-property result :external-address)))
       (is (zerop (result-property result :internal-port)))
       (is (zerop (result-property result :external-port)))
