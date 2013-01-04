@@ -85,10 +85,11 @@
                                      #'(lambda ()
                                          (setf finished-waiting t))))
     (when (not (null callback))
-      (mp:process-wait-with-timeout "Waiting for operation to be cancelled."
-                                    timeout
-                                    #'(lambda ()
-                                        finished-waiting))))
+      (unless (mp:process-wait-with-timeout "Waiting for operation to be cancelled."
+                                            timeout
+                                            #'(lambda ()
+                                                finished-waiting))
+        (error 'cancel-timeout-error))))
   (values))
 
 (defun dispatch (&rest operation-initargs)

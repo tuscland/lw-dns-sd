@@ -1,8 +1,7 @@
 (defpackage #:com.wildora.dnssd.api 
   (:import-from #:com.wildora.dnssd.dispatcher
    #:dispatch)
-  (:import-from #:com.wildora.dnssd.foreign-high
-   #:+interface-index-any+
+  (:import-from #:com.wildora.dnssd.core
    #:service-ref
    #:dns-service-register
    #:dns-service-enumerate-domains
@@ -33,7 +32,7 @@
               :service-prototype service)))
 
 (defun enumerate-domains (&key callback
-                               (interface-index +interface-index-any+)
+                               interface-index
                                (domains :browse-domains))
   (fli:with-dynamic-foreign-objects ((handle-ptr service-ref))
     (dns-service-enumerate-domains handle-ptr interface-index domains)
@@ -42,7 +41,7 @@
 
 (defun browse (type
                &key callback
-                    domain) ; (make-domain :name "local.")
+                    domain)
   (fli:with-dynamic-foreign-objects ((handle-ptr service-ref))
     (dns-service-browse handle-ptr type domain)
     (dispatch :handle (fli:dereference handle-ptr)
@@ -61,7 +60,7 @@
 
 (defun get-addr-info (hostname
                       &key callback
-                           (interface-index +interface-index-any+)
+                           interface-index
                            (protocol :ipv4)
                            broadcasting)
   (fli:with-dynamic-foreign-objects ((handle-ptr service-ref))
@@ -72,7 +71,7 @@
 
 (defun query-record (full-name type class
                      &key callback
-                          (interface-index +interface-index-any+)
+                          interface-index
                           broadcasting)
   (fli:with-dynamic-foreign-objects ((handle-ptr service-ref))
     (dns-service-query-record handle-ptr full-name type class interface-index broadcasting)
@@ -81,7 +80,7 @@
 
 (defun nat-port-mapping-create (internal-port
                                 &key callback
-                                     (interface-index +interface-index-any+)
+                                     interface-index
                                      (external-port 0)
                                      protocols
                                      (ttl 0))
@@ -103,7 +102,7 @@
   "_services._dns-sd._udp.local.")
 
 (defun query-services-types (&key callback
-                                 (interface-index +interface-index-any+))
+                                  interface-index)
   (query-record *meta-query-service-full-name*
                 +service-type-PTR+
                 +service-class-IN+

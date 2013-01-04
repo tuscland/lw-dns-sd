@@ -1,4 +1,4 @@
-(defpackage #:com.wildora.dnssd.foreign-high
+(defpackage #:com.wildora.dnssd.core
   (:import-from #:com.wildora.dnssd.operation
    #:current-operation
    #:operation-reply
@@ -40,7 +40,7 @@
    #:parse-txt-record
    #:build-txt-record))
 
-(in-package #:com.wildora.dnssd.foreign-high)
+(in-package #:com.wildora.dnssd.core)
 
 (defconstant +protocol-ipv4+    #x001)
 (defconstant +protocol-ipv6+    #x002)
@@ -255,9 +255,17 @@
                      :internal-port internal-port
                      :external-port external-port
                      :ttl ttl)))
+
+
 ;;;;
 ;;;; High level versions of operations functions
 ;;;;
+
+(defun make-callback-pointer (symbol)
+  (let ((result (fli:make-pointer :symbol-name symbol
+                                  :functionp t)))
+    (assert (not (fli:null-pointer-p result)))
+    result))
 
 ;;;;
 ;;;; Keyword options to flags translation
@@ -287,12 +295,12 @@
 
 
 (defun dns-service-register (handle-ptr no-auto-rename service)
+  (check-type service service)
   (let ((txt-record (build-txt-record
                      (service-properties service)))
         (flags (if no-auto-rename
                    +flag-no-auto-rename+
                  +flag-no-flag+)))
-    (check-type service service)
     (fli:with-dynamic-lisp-array-pointer (txt-ptr txt-record)
       (%dns-service-register handle-ptr
                              flags
@@ -305,11 +313,13 @@
                               (service-port service))
                              (length txt-record)
                              txt-ptr
-                             (infra:make-callback-pointer 'dns-service-register-reply)
+                             (make-callback-pointer 'dns-service-register-reply)
                              nil)))
   (values))
 
 (defun dns-service-enumerate-domains (handle-ptr interface-index domains)
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
   (assert (member domains '(:browse-domains :registration-domains)))
   (let ((flags (cdr (assoc domains *enumerated-domains-flags*))))
@@ -317,7 +327,7 @@
      handle-ptr
      flags
      interface-index
-     (infra:make-callback-pointer 'dns-service-enumerate-domains-reply)
+     (make-callback-pointer 'dns-service-enumerate-domains-reply)
      nil))
   (values))
 
@@ -334,7 +344,7 @@
    type
    (when domain
      (domain-name domain))
-   (infra:make-callback-pointer 'dns-service-browse-reply)
+   (make-callback-pointer 'dns-service-browse-reply)
    nil)
   (values))
 
@@ -352,16 +362,19 @@
      (service-name service)
      (service-type service)
      (service-domain-name service)
-     (infra:make-callback-pointer 'dns-service-resolve-reply)
+     (make-callback-pointer 'dns-service-resolve-reply)
      nil))
   (values))
 
 (defun dns-service-get-addr-info (handle-ptr hostname interface-index protocol broadcasting)
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
+  (check-type hostname string)
+  (assert (member protocol '(:ipv4 :ipv6)))
   (when broadcasting
     (assert (member broadcasting
                     '(:force-multicast :long-lived-query))))
-  (assert (member protocol '(:ipv4 :ipv6)))
   (let ((flags (broadcasting-option-to-flag broadcasting))
         (protocol-flags (or (when (eq protocol :ipv4)
                               +protocol-ipv4+)
@@ -373,7 +386,7 @@
      interface-index
      protocol-flags
      hostname
-     (infra:make-callback-pointer 'dns-service-get-addr-info-reply)
+     (make-callback-pointer 'dns-service-get-addr-info-reply)
      nil))
   (values))
 
@@ -381,19 +394,21 @@
   (check-type full-name string)
   (check-type type integer)
   (check-type class integer)
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
   (when broadcasting
     (assert (member broadcasting
                     '(:force-multicast :long-lived-query))))
   (%dns-service-query-record
-     handle-ptr
-     (broadcasting-option-to-flag broadcasting)
-     interface-index
-     full-name
-     type
-     class
-     (infra:make-callback-pointer 'dns-service-query-record-reply)
-     nil)
+   handle-ptr
+   (broadcasting-option-to-flag broadcasting)
+   interface-index
+   full-name
+   type
+   class
+   (make-callback-pointer 'dns-service-query-record-reply)
+   nil)
   (values))
 
 (defvar *protocols-flags*
@@ -408,19 +423,21 @@
         :finally (return flags)))
 
 (defun dns-service-nat-port-mapping-create (handle-ptr interface-index protocols internal-port external-port ttl)
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
   (check-type protocols list)
   (check-type internal-port (integer 0))
   (check-type external-port (integer 0))
   (check-type ttl (integer 0))
   (%dns-service-nat-port-mapping-create
-     handle-ptr
-     0
-     interface-index
-     (protocols-to-flags protocols)
-     internal-port
-     external-port
-     ttl
-     (infra:make-callback-pointer 'dns-service-nat-port-mapping-create-reply)
-     nil)
+   handle-ptr
+   0
+   interface-index
+   (protocols-to-flags protocols)
+   internal-port
+   external-port
+   ttl
+   (make-callback-pointer 'dns-service-nat-port-mapping-create-reply)
+   nil)
   (values))

@@ -26,8 +26,8 @@
 
 ;; TODO: abstract interface index?
 (def-dnssd-struct (service
-                      (:constructor %make-service))
-  (interface-index +interface-index-any+)
+                   (:constructor %make-service))
+  interface-index
   name
   full-name
   type
@@ -37,15 +37,13 @@
   properties)
 
 (defun validate-service (&key interface-index name full-name type domain-name host port properties)
-  (when interface-index
-    (check-type interface-index (integer 0)))
+  (check-type interface-index (integer 0))
+  (check-type type string)
   (when name
     (check-type name string)
     (assert (< (length name) +max-service-name-length+)))
   (when full-name
     (check-type full-name string))
-  (when type
-    (check-type type string))
   (when domain-name
     (check-type domain-name string)
     (assert (< (length domain-name) +max-domain-name-length+)))
@@ -56,6 +54,9 @@
   (check-type properties list))
 
 (defun make-service (&rest initargs)
+  (unless (getf initargs :interface-index)
+    (setf (getf initargs :interface-index)
+          +interface-index-any+))
   (apply 'validate-service initargs)
   (apply '%make-service initargs))
 
@@ -106,31 +107,42 @@
        (= (service-interface-index service1)
           (service-interface-index service2))))
 
-(def-dnssd-struct record
-  (interface-index +interface-index-any+)
+
+(def-dnssd-struct (record
+                   (:constructor %make-record))
+  interface-index
   name
   type
   class
   data
   ttl)
 
+(defun make-record (&rest initargs)
+  (unless (getf initargs :interface-index)
+    (setf (getf initargs :interface-index)
+          +interface-index-any+))
+  (apply '%make-record initargs))
+
+
 (def-dnssd-struct (domain
                    (:constructor %make-domain))
-  (interface-index +interface-index-any+)
+  interface-index
   name
   defaultp)
 
 (defun validate-domain (&key interface-index
                              name
                              defaultp)
-  (when interface-index
-    (check-type interface-index (integer 0)))
+  (check-type interface-index (integer 0))
   (when name
     (assert (< (length name) +max-domain-name-length+)))
   (when defaultp
     (assert (eq defaultp t))))
 
 (defun make-domain (&rest initargs)
+  (unless (getf initargs :interface-index)
+    (setf (getf initargs :interface-index)
+          +interface-index-any+))
   (apply 'validate-domain initargs)
   (apply '%make-domain initargs))
 
