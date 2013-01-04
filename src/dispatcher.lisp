@@ -3,7 +3,7 @@
 (defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)
 (defglobal-variable *cancel-operation-lock* (mp:make-lock :sharing t))
-(defconstant +process-join-timeout+ 10)
+(defconstant *process-join-timeout* 10)
 
 
 (defun %add-operation (operation)
@@ -62,9 +62,7 @@
 ;;;;
 
 (define-condition cancel-timeout-error (dnssd-error)
-  ()
-  (:default-initargs
-   :format-control "Waiting for operation event timed out"))
+  ())
 
 (defparameter *default-cancel-timeout* 60)
 
@@ -112,7 +110,7 @@
                              (mp:process-kill
                               (mp:get-current-process))))
         (mp:process-join *process*
-                         :timeout +process-join-timeout+)
+                         :timeout *process-join-timeout*)
         (setf *process* nil))
     (warn "DNSSD Dispatcher not running"))  
   (values))

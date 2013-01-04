@@ -73,21 +73,18 @@
 (defmacro define-dnssd-function ((name external-name) args)
   "Declares a foreign function that returns a value of type
 DNSServiceErrorType and defines a wrapper around the foreign function
-that raises an error of type DNSSD-RESULT-ERROR if the foreign
-function returns a value indicating that an error occurred."
+that raises an error of type RESULT-ERROR if the foreign function
+returns a value indicating that an error occurred."
   (let ((unwrapped-name (intern (format nil "%~A" name)))
 	(result (gensym "RESULT"))
         (arg-names (mapcar #'car args)))
-    `(dspec:def (define-dnssd-function (,name ,external-name))
-       (fli:define-foreign-function (,unwrapped-name ,external-name :source)
+    `(progn
+       (fli:define-foreign-function (,unwrapped-name ,external-name)
            ,args
-         :result-type error-t
-         :language :ansi-c)
+         :result-type error-t)
        (defun ,name ,arg-names
          (let ((,result (,unwrapped-name ,@arg-names)))
-           (if (error-code-p ,result)
-               (dnssd-error ,result)
-             ,result))))))
+           (maybe-signal-result-error ,result))))))
 
 (define-dnssd-function (dns-service-get-property
                         "DNSServiceGetProperty")

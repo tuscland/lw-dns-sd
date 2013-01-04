@@ -35,15 +35,6 @@
 ;;;; Bitfield flag testing
 ;;;;
 
-(defconstant +protocol-ipv4+    #x001)
-(defconstant +protocol-ipv6+    #x002)
-(defconstant +protocol-udp+     #x010)
-(defconstant +protocol-tcp+     #x020)
-
-(defconstant +flag-more-coming+ #x001)
-(defconstant +flag-add+         #x002)
-(defconstant +flag-default+     #x004)
-
 (defun flag-test (flag flags
                   &optional (included-symbol t) (excluded-symbol nil))
   (if (zerop (logand flag flags))
@@ -261,15 +252,6 @@
 ;;;;
 ;;;; Keyword options to flags translation
 ;;;;
-
-(defconstant +flag-no-flag+              #x000)
-(defconstant +flag-no-auto-rename+       #x008)
-(defconstant +flag-shared+               #x010)
-(defconstant +flag-unique+               #x020)
-(defconstant +flag-browse-domains+       #x040)
-(defconstant +flag-registration-domains+ #x080)
-(defconstant +flag-long-lived-query+     #x100)
-(defconstant +flag-force-multicast+      #x400)
 
 (defvar *enumerated-domains-flags*
   `((:registration-domains . ,+flag-registration-domains+)

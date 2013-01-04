@@ -1,16 +1,9 @@
 (in-package #:com.wildora.dnssd)
 
-(defconstant +interface-index-any+        #x00000000)
-(defconstant +interface-index-local-only+ #xFFFFFFFF)
-(defconstant +interface-index-unicast+    #xFFFFFFFE)
-(defconstant +interface-index-p2p+        #xFFFFFFFD)
-
-
-(defconstant +max-service-name-length+ 63)
-;; FIXME: checks are buggy because the length should account for the
-;; *escaped* string, not the input string
+;; FIXME: domain name checks are buggy because the length should
+;; account for the *escaped* string, not the input string
 (defconstant +max-domain-name-length+ 1008)
-
+(defconstant +max-service-name-length+ 63)
 
 (defmacro def-dnssd-struct (name-and-options &rest slots)
   (flet ((read-only-slot (slot)
@@ -21,8 +14,6 @@
     `(defstruct ,name-and-options
        ,@(mapcar #'read-only-slot slots))))
 
-
-;; TODO: abstract interface index?
 (def-dnssd-struct (service
                    (:constructor %make-service))
   interface-index
@@ -59,14 +50,7 @@
   (apply '%make-service initargs))
 
 (defun merge-service (service
-                      &key interface-index
-                           name
-                           full-name
-                           type
-                           domain-name
-                           host
-                           port
-                           properties)
+                      &key interface-index name full-name type domain-name host port properties)
   (make-service :interface-index
                 (or interface-index
                     (service-interface-index service))
@@ -105,7 +89,6 @@
        (= (service-interface-index service1)
           (service-interface-index service2))))
 
-
 (def-dnssd-struct (record
                    (:constructor %make-record))
   interface-index
@@ -121,16 +104,13 @@
           +interface-index-any+))
   (apply '%make-record initargs))
 
-
 (def-dnssd-struct (domain
                    (:constructor %make-domain))
   interface-index
   name
   defaultp)
 
-(defun validate-domain (&key interface-index
-                             name
-                             defaultp)
+(defun validate-domain (&key interface-index name defaultp)
   (check-type interface-index (integer 0))
   (when name
     (assert (< (length name) +max-domain-name-length+)))

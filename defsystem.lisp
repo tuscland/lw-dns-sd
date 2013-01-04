@@ -2,15 +2,14 @@
 
 (defsystem #:dnssd
   (:default-pathname "src")
-  :members (("infra" :type :system)
-            "dependencies"
+  :members ("dependencies"
             "package"
             "if-name"
             "constants"
             "conditions"
             "txt-record"
             "structs"
-            "event"
+            "result"
             "foreign"
             "operation"
             "dispatcher"
@@ -18,22 +17,16 @@
             "api")
   :rules ((:in-order-to :compile :all
            (:requires
-            (:load "infra")
             (:load "dependencies")
-            (:load "package")))
-          (:in-order-to :compile ("event")
+            (:load "package")
+            (:load "constants")))
+          (:in-order-to :compile ("result")
            (:requires
             (:load "conditions")))
           (:in-order-to :compile "operation"
            (:requires
             (:load "conditions")
-            (:load "event")))
-          (:in-order-to :compile "core"
-           (:requires
-            (:load "structs")))
-          (:in-order-to :compile "api"
-           (:requires
-            (:load "constants")))))
+            (:load "result")))))
 
 (defsystem #:dnssd-tests
   (:default-pathname "tests")

@@ -24,9 +24,6 @@
           (is (string-equal name (if-index-to-name index)))
           (is (= index (if-name-to-index name))))))
 
-(test dnssd-error
-  (signals dnssd-error (dnssd-error -65537)))
-
 (test service-predicate
   (is (service-p (make-test-service))))
 
@@ -56,8 +53,8 @@
   (with-dispatcher
     (let* ((service (make-service :type "_test._udp." :port 9999))
            (operation (register service))
-           (event (operation-wait-event operation)))
-      (is-true (event-property event :success-p)))))
+           (result (operation-wait-result operation)))
+      (is-true (result-property result :success-p)))))
 
 (test (register-service-type-error :depends-on dispatch-run)
   (with-dispatcher
@@ -68,42 +65,42 @@
   (with-dispatcher
     (let* ((service (make-service :type "_test._udp." :port 9999))
            (operation (register service))
-           (event (operation-wait-event operation)))
-      (signals dnssd-error
-        (event-property event :unknown-property)))))
+           (result (operation-wait-result operation)))
+      (signals error
+        (result-property result :unknown-property)))))
 
 (defun do-registration-conflict (provoke-conflict-error)
   (with-dispatcher
     ;; 1. register a dummy service, automatically named
     (let* ((operation (register (make-test-service)
                                 :no-auto-rename provoke-conflict-error))
-           (event (operation-wait-event operation))
-           (service (event-property event :service)))
-      (is-true (event-property event :success-p))
+           (result (operation-wait-result operation))
+           (service (result-property result :service)))
+      (is-true (result-property result :success-p))
       ;; 2. register a service with the same name, but on a different
       ;; port for conflict
       (let* ((conflict-service (merge-service service
                                               :port (1+ (service-port service))))
              (conflict-operation (register conflict-service :no-auto-rename t))
-             (event (operation-wait-event conflict-operation)))
-        (is-true (event-property event :success-p))
+             (result (operation-wait-result conflict-operation)))
+        (is-true (result-property result :success-p))
         ;; 3. Zeroconf will automatically rename our first service
         ;; after some time, by notifying on the first operation.
         (if provoke-conflict-error
             ;; This will signal a name-conflict-error
             (signals dnssd-error
-              (operation-wait-event operation))
+              (operation-wait-result operation))
           ;; In the latter case, the original service will be renamed,
           ;; so we must handle the callbacks.
-          (let ((event (operation-wait-event operation)))
-            (is-false (event-property event :success-p))
+          (let ((result (operation-wait-result operation)))
+            (is-false (result-property result :success-p))
             ;; 4. The service has eventually been renamed, compare
             ;; that the new name is different.
-            (let ((event (operation-wait-event operation)))
-              (is-true (event-property event :success-p))
+            (let ((result (operation-wait-result operation)))
+              (is-true (result-property result :success-p))
               (is (not (string= (service-name service)
                                 (service-name
-                                 (event-property event :service))))))))))))
+                                 (result-property result :service))))))))))))
 
 (test (registration-conflict-1 :depends-on register-service)
   (do-registration-conflict nil))
@@ -115,74 +112,74 @@
   (with-dispatcher
     (let* ((service (make-test-service))
            (operation (register service))
-           (event (operation-wait-event operation)))
-    (let* ((conflict-service (event-property event :service))
+           (result (operation-wait-result operation)))
+    (let* ((conflict-service (result-property result :service))
            (conflict-operation (register conflict-service :no-auto-rename t)))
       ;; registering a service twice (with the same name, type and
       ;; port) results in a timeout.
-      (signals event-timeout-error
-        (operation-wait-event conflict-operation
+      (signals result-timeout-error
+        (operation-wait-result conflict-operation
                               :timeout +test-timeout+))))))
 
 (test (enumerate-browse-domains :depends-on dispatch-run)
   (with-dispatcher
     (let* ((operation (enumerate-domains :domains :browse-domains))
-           (event (operation-wait-event operation)))
-      (is (eq :add (event-property event :presence))))))
+           (result (operation-wait-result operation)))
+      (is (eq :add (result-property result :presence))))))
 
 (test (enumerate-registration-domains :depends-on dispatch-run)
   (with-dispatcher
     (let* ((operation (enumerate-domains :domains :registration-domains))
-           (event (operation-wait-event operation)))
-      (is (eq :add (event-property event :presence))))))
+           (result (operation-wait-result operation)))
+      (is (eq :add (result-property result :presence))))))
 
 (defun match-service-presence (presence registered-service)
-  #'(lambda (event)
-      (and (eq presence (event-property event :presence))
+  #'(lambda (result)
+      (and (eq presence (result-property result :presence))
            (string= (service-name
-                     (event-property event :service))
+                     (result-property result :service))
                     (service-name registered-service)))))
 
 (test (browse-timeout :depends-on register-service)
   (with-dispatcher
     (let ((operation (browse "_inexistent_service_type._udp")))
-      (signals event-timeout-error
-        (operation-wait-event operation :timeout +test-timeout+)))))
+      (signals result-timeout-error
+        (operation-wait-result operation :timeout +test-timeout+)))))
 
 (test (browse :depends-on register-service)
   (with-dispatcher
     (let* ((operation (register (make-test-service "Browse Test Service")))
-           (event (operation-wait-event operation))
-           (service (event-property event :service)))
-      (is-true (event-property event :success-p))
+           (result (operation-wait-result operation))
+           (service (result-property result :service)))
+      (is-true (result-property result :success-p))
       (let* ((domain (make-domain :name (service-domain-name service)))
              (browse-operation (browse *test-service-type* :domain domain)))
         (finishes
-          (operation-wait-event browse-operation
+          (operation-wait-result browse-operation
                                 :test (match-service-presence :add service)))
         (cancel operation) ; called with no callback is blocking
         (finishes
-          (operation-wait-event browse-operation
+          (operation-wait-result browse-operation
                                 :test (match-service-presence :remove service)))))))
 
 (defun register-browse-and-resolve (service-name test-function)
   (with-dispatcher
     (let* ((register-operation (register (make-test-service service-name)))
-           (register-event (operation-wait-event register-operation))
-           (registered-service (event-property register-event :service)))
+           (register-result (operation-wait-result register-operation))
+           (registered-service (result-property register-result :service)))
       (let* ((domain (make-domain :name (service-domain-name registered-service)))
              (browse-operation (browse *test-service-type* :domain domain))
-             (browse-event (operation-wait-event browse-operation
+             (browse-result (operation-wait-result browse-operation
                                                  :test (match-service-presence :add registered-service))))
-        (let* ((resolve-operation (resolve (event-property browse-event :service)))
-               (resolve-event (operation-wait-event resolve-operation)))
-          (funcall test-function registered-service resolve-event))))))
+        (let* ((resolve-operation (resolve (result-property browse-result :service)))
+               (resolve-result (operation-wait-result resolve-operation)))
+          (funcall test-function registered-service resolve-result))))))
 
 (test (resolve :depends-on browse)
   (register-browse-and-resolve
    "Resolve Test Service"
-   #'(lambda (registered-service resolve-event)
-       (let ((resolved-service (event-property resolve-event :service)))
+   #'(lambda (registered-service resolve-result)
+       (let ((resolved-service (result-property resolve-result :service)))
         (is (string= (service-name resolved-service)
                      (service-name registered-service)))
         (is (string= (service-type resolved-service)
@@ -196,21 +193,21 @@
 (test (get-addr-info :depends-on resolve)
   (register-browse-and-resolve
    "GetAddrInfo Test Service"
-   #'(lambda (registered-service resolve-event)
+   #'(lambda (registered-service resolve-result)
        (declare (ignore registered-service))
-       (let* ((resolved-service (event-property resolve-event :service))
+       (let* ((resolved-service (result-property resolve-result :service))
               (hostname (service-host resolved-service))
               (operation (get-addr-info hostname))
-              (event (operation-wait-event operation)))
-          (is (string= (event-property event :hostname)
+              (result (operation-wait-result operation)))
+          (is (string= (result-property result :hostname)
                        hostname))
-          (is (stringp (event-property event :address)))))))
+          (is (stringp (result-property result :address)))))))
 
 (test (nat-port-mapping-create :depends-on dispatch-run)
   (with-dispatcher
     (let* ((operation (nat-port-mapping-create 0))
-           (event (operation-wait-event operation)))
-      (is (stringp (event-property event :external-address)))
-      (is (zerop (event-property event :internal-port)))
-      (is (zerop (event-property event :external-port)))
-      (is (zerop (event-property event :ttl))))))
+           (result (operation-wait-result operation)))
+      (is (stringp (result-property result :external-address)))
+      (is (zerop (result-property result :internal-port)))
+      (is (zerop (result-property result :external-port)))
+      (is (zerop (result-property result :ttl))))))

@@ -43,18 +43,18 @@
    #:domain-name
    #:domain-defaultp
 
-   #:event
-   #:event-properties
-   #:event-property
-   #:event-property-error
-   #:event-more-coming-p
+   #:result
+   #:result-properties
+   #:result-property
+   #:result-property-error
+   #:result-more-coming-p
 
    #:operation
-   #:operation-collect-events
-   #:operation-wait-event
+   #:operation-collect-results
+   #:operation-wait-result
    #:operation-cancelled-p
-   #:*default-event-timeout*
-   #:event-timeout-error
+   #:*default-result-timeout*
+   #:result-timeout-error
 
    #:dispatcher-start
    #:dispatcher-stop

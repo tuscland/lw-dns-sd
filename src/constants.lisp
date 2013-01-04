@@ -1,5 +1,27 @@
 (in-package #:com.wildora.dnssd)
 
+(defconstant +interface-index-any+        #x00000000)
+(defconstant +interface-index-local-only+ #xFFFFFFFF)
+(defconstant +interface-index-unicast+    #xFFFFFFFE)
+(defconstant +interface-index-p2p+        #xFFFFFFFD)
+
+(defconstant +protocol-ipv4+             #x001)
+(defconstant +protocol-ipv6+             #x002)
+(defconstant +protocol-udp+              #x010)
+(defconstant +protocol-tcp+              #x020)
+
+(defconstant +flag-no-flag+              #x000)
+(defconstant +flag-more-coming+          #x001)
+(defconstant +flag-add+                  #x002)
+(defconstant +flag-default+              #x004)
+(defconstant +flag-no-auto-rename+       #x008)
+(defconstant +flag-shared+               #x010)
+(defconstant +flag-unique+               #x020)
+(defconstant +flag-browse-domains+       #x040)
+(defconstant +flag-registration-domains+ #x080)
+(defconstant +flag-long-lived-query+     #x100)
+(defconstant +flag-force-multicast+      #x400)
+
 (defconstant +service-class-IN+      1)     ; Internet
 
 (defconstant +service-type-A+        1)     ; Host address.

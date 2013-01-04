@@ -1,6 +1,6 @@
 (in-package #:com.wildora.dnssd)
 
-(defparameter *default-event-timeout* 60)
+(defparameter *default-result-timeout* 60)
 
 (defun daemon-version ()
   (fli:with-dynamic-foreign-objects ((result :uint32)
@@ -21,11 +21,8 @@
      ,@body))
 
 
-(define-condition event-timeout-error (dnssd-error)
-  ()
-  (:default-initargs
-   :format-control "Waiting for operation event timed out"))
-
+(define-condition result-timeout-error (dnssd-error)
+  ())
 
 (defclass operation (comm:socket-stream)
   ((handle
@@ -44,8 +41,8 @@
     :reader operation-callback
     :initform nil
     :initarg :callback)
-   (events-queue
-    :reader operation-events-queue
+   (results-queue
+    :reader operation-results-queue
     :initform (mp:make-mailbox)))
   (:default-initargs
    :direction :input))
@@ -65,46 +62,44 @@
   (fli:null-pointer-p
    (operation-handle self)))
 
-(defmethod operation-enqueue-event ((self operation) (event event))
+(defmethod operation-enqueue-result ((self operation) (result result))
   (mp:mailbox-send
-   (operation-events-queue self)
-   event))
+   (operation-results-queue self)
+   result))
 
-(defmethod operation-next-event ((self operation)
-                                  &key (timeout *default-event-timeout*))
-  (check-event
+(defmethod operation-next-result ((self operation)
+                                  &key (timeout *default-result-timeout*))
+  (check-result
    (multiple-value-bind (object flag)
-       (mp:mailbox-read (operation-events-queue self)
-                        "Waiting for next operation event"
+       (mp:mailbox-read (operation-results-queue self)
+                        "Waiting for next operation result"
                         timeout)
      (if flag
          object
-       (error 'event-timeout-error)))))
+       (error 'result-timeout-error)))))
 
-(defmethod operation-collect-events ((self operation)
-                                      &key (timeout *default-event-timeout*)
-                                           (test #'event-more-coming-p))
-  (loop :for event := (operation-next-event self :timeout timeout)
-        :collect event
-        :while (funcall test event)))
+(defmethod operation-collect-results ((self operation)
+                                      &key (timeout *default-result-timeout*)
+                                           (test #'result-more-coming-p))
+  (loop :for result := (operation-next-result self :timeout timeout)
+        :collect result
+        :while (funcall test result)))
 
-(defmethod operation-wait-event ((self operation)
+(defmethod operation-wait-result ((self operation)
                                   &key (test (constantly t))
-                                       (timeout *default-event-timeout*))
-  (loop :for event := (operation-next-event self :timeout timeout)
-        :when (funcall test event)
-        :do (return event)))
+                                       (timeout *default-result-timeout*))
+  (loop :for result := (operation-next-result self :timeout timeout)
+        :when (funcall test result)
+        :do (return result)))
 
-(defmethod operation-invoke-callback ((self operation) (event event))
+(defmethod operation-invoke-callback ((self operation) (result result))
   (funcall (or (operation-callback self)
-               #'operation-enqueue-event) self event))
+               #'operation-enqueue-result) self result))
 
-(defmethod operation-reply ((self operation) error-code more-coming-p &rest event-values)
-  (if (error-code-p error-code)
-      (dnssd-error error-code)
-    (operation-invoke-callback self
-                               (make-event more-coming-p
-                                           event-values))))
+(defmethod operation-reply ((self operation) error-code more-coming-p &rest result-values)
+  (maybe-signal-result-error error-code)
+  (operation-invoke-callback self
+                             (make-result more-coming-p result-values)))
 
 (defmethod %process-operation ((self operation))
   (with-current-operation self
@@ -112,10 +107,10 @@
   (%cancel-after-reply-p self))
 
 (defmethod process-operation ((self operation))
-  "Called from the dispatched to process pending events."
+  "Called from the dispatched to process pending results."
   (handler-case (%process-operation self)
-    (dnssd-error (condition)
+    (result-error (condition)
       (operation-invoke-callback self
-                                 (make-operation-error-event condition))
+                                 (make-operation-error-result condition))
       ;; return t to indicate that the operation is no longer valid
       t)))
