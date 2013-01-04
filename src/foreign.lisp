@@ -1,10 +1,4 @@
-(defpackage #:com.wildora.dnssd.foreign
-  (:import-from #:com.wildora.dnssd.conditions
-   #:error-code-p
-   #:dnssd-error))
-
-(in-package #:com.wildora.dnssd.foreign)
-
+(in-package #:com.wildora.dnssd)
 
 (fli:define-foreign-type service-ref ()
   '(:pointer :void))

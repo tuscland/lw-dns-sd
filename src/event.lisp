@@ -1,13 +1,7 @@
-(defpackage #:com.wildora.dnssd.event
-  (:import-from #:com.wildora.dnssd.conditions
-   #:dnssd-error))
-
-(in-package #:com.wildora.dnssd.event)
-
+(in-package #:com.wildora.dnssd)
 
 (define-condition event-property-error (dnssd-error)
   ())
-
 
 (defclass event ()
   ())

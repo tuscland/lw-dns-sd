@@ -1,6 +1,4 @@
-(defpackage #:com.wildora.dnssd.conditions)
-(in-package #:com.wildora.dnssd.conditions)
-
+(in-package #:com.wildora.dnssd)
 
 (defun error-code-p (code)
   (not (zerop code)))

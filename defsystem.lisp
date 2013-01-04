@@ -4,6 +4,7 @@
   (:default-pathname "src")
   :members (("infra" :type :system)
             "dependencies"
+            "package"
             "if-name"
             "constants"
             "conditions"
@@ -13,47 +14,26 @@
             "foreign"
             "operation"
             "dispatcher"
-            "foreign-high"
-            "api"
-            "package")
+            "core"
+            "api")
   :rules ((:in-order-to :compile :all
            (:requires
             (:load "infra")
-            (:load "dependencies")))
-          (:in-order-to :compile ("event" "foreign")
+            (:load "dependencies")
+            (:load "package")))
+          (:in-order-to :compile ("event")
            (:requires
             (:load "conditions")))
           (:in-order-to :compile "operation"
            (:requires
             (:load "conditions")
-            (:load "foreign")
             (:load "event")))
-          (:in-order-to :compile "dispatcher"
+          (:in-order-to :compile "core"
            (:requires
-            (:load "operation")))
-          (:in-order-to :compile "foreign-high"
-           (:requires
-            (:load "txt-record")
-            (:load "structs")
-            (:load "foreign")
-            (:load "operation")))
+            (:load "structs")))
           (:in-order-to :compile "api"
            (:requires
-            (:load "constants")
-            (:load "dispatcher")
-            (:load "foreign-high")))
-          (:in-order-to :compile "package"
-           (:requires
-            (:load "if-name")
-            (:load "conditions")
-            (:load "structs")
-            (:load "event")
-            (:load "operation")
-            (:load "dispatcher")
-            (:load "api")))
-          (:in-order-to :load :all
-           (:requires
-            (:load :previous)))))
+            (:load "constants")))))
 
 (defsystem #:dnssd-tests
   (:default-pathname "tests")

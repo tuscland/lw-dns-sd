@@ -1,5 +1,4 @@
-(defpackage #:com.wildora.dnssd.if-name)
-(in-package #:com.wildora.dnssd.if-name)
+(in-package #:com.wildora.dnssd)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant IFNAMSIZ 16)

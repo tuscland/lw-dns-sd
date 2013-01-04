@@ -1,6 +1,4 @@
-(defpackage #:com.wildora.dnssd.structs)
-(in-package #:com.wildora.dnssd.structs)
-
+(in-package #:com.wildora.dnssd)
 
 (defconstant +interface-index-any+        #x00000000)
 (defconstant +interface-index-local-only+ #xFFFFFFFF)

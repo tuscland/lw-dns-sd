@@ -1,46 +1,39 @@
-(defpackage #:com.wildora.dnssd.core
-  (:import-from #:com.wildora.dnssd.operation
-   #:current-operation
-   #:operation-reply
-   #:operation-service-prototype)
-  (:import-from #:com.wildora.dnssd.structs
-   #:+interface-index-any+
-   #:service
-   #:make-service
-   #:merge-service
-   #:service-interface-index
-   #:service-name
-   #:service-type
-   #:service-domain-name
-   #:service-host
-   #:service-port
-   #:service-properties
-   #:record
-   #:make-record
-   #:domain
-   #:make-domain
-   #:domain-interface-index
-   #:domain-name)
-  (:import-from #:com.wildora.dnssd.foreign
-   #:ip-address-from-sockaddr
-   #:sockaddr
-   #:service-ref
-   #:flags-t
-   #:error-t
-   #:protocol-t
-   #:dnssd-string
-   #:%dns-service-register
-   #:%dns-service-enumerate-domains
-   #:%dns-service-browse
-   #:%dns-service-resolve
-   #:%dns-service-get-addr-info
-   #:%dns-service-query-record
-   #:%dns-service-nat-port-mapping-create)
-  (:import-from #:com.wildora.dnssd.txt-record
-   #:parse-txt-record
-   #:build-txt-record))
+(in-package #:com.wildora.dnssd)
 
-(in-package #:com.wildora.dnssd.core)
+(defun make-array-from-foreign-bytes (pointer length)
+  (let ((array (make-array length :element-type '(unsigned-byte 8))))
+    (fli:replace-foreign-array array pointer :end2 length)))
+
+
+;;;;
+;;;; Byte swapping utilities
+;;;;
+;; From cl-swap
+(declaim (inline swap-bytes-16))
+(defun swap-bytes-16 (value)
+  (declare (type (unsigned-byte 16) value)
+           (optimize (speed 3)
+                     (safety 0)
+                     (hcl:fixnum-safety 0)))
+  (logior (ash (logand #xFF value)  8)
+          (ash value -8)))
+
+(defun ntohs (value)
+  #+:little-endian
+  (swap-bytes-16 value)
+  #+:big-endian
+  value)
+
+(defun htons (value)
+  #+:little-endian
+  (swap-bytes-16 value)
+  #+:big-endian
+  value)
+
+
+;;;;
+;;;; Bitfield flag testing
+;;;;
 
 (defconstant +protocol-ipv4+    #x001)
 (defconstant +protocol-ipv6+    #x002)
@@ -66,12 +59,10 @@
 (defun flags-more-coming-p (flags)
   (flag-test +flag-more-coming+ flags))
 
-(defun make-array-from-foreign-bytes (pointer length)
-  (let ((array (make-array length
-                           :element-type '(unsigned-byte 8))))
-    (fli:replace-foreign-array array
-                               pointer
-                               :end2 length)))
+
+;;;;
+;;;; Foreign callbacks
+;;;;
 
 (fli:define-foreign-callable (dns-service-register-reply
                               :result-type :void)
@@ -157,7 +148,7 @@
                          :interface-index interface-index
                          :full-name full-name
                          :host host
-                         :port (infra:ntohs port)
+                         :port (ntohs port)
                          :properties (parse-txt-record txt-record))))
     (operation-reply (current-operation)
                      error-code
@@ -270,17 +261,15 @@
 ;;;;
 ;;;; Keyword options to flags translation
 ;;;;
+
 (defconstant +flag-no-flag+              #x000)
 (defconstant +flag-no-auto-rename+       #x008)
-
 (defconstant +flag-shared+               #x010)
 (defconstant +flag-unique+               #x020)
-
 (defconstant +flag-browse-domains+       #x040)
 (defconstant +flag-registration-domains+ #x080)
 (defconstant +flag-long-lived-query+     #x100)
 (defconstant +flag-force-multicast+      #x400)
-
 
 (defvar *enumerated-domains-flags*
   `((:registration-domains . ,+flag-registration-domains+)
@@ -292,7 +281,6 @@
       (when (eq option :long-lived-query)
         +flag-long-lived-query+)
       +flag-no-flag+))
-
 
 (defun dns-service-register (handle-ptr no-auto-rename service)
   (check-type service service)
@@ -309,7 +297,7 @@
                              (service-type service)
                              (service-domain-name service)
                              (service-host service)
-                             (infra:htons
+                             (htons
                               (service-port service))
                              (length txt-record)
                              txt-ptr

@@ -1,12 +1,4 @@
-(defpackage #:com.wildora.dnssd.dispatcher
-  (:import-from #:com.wildora.dnssd.operation
-   #:operation
-   #:operation-cancelled-p
-   #:cancel-operation
-   #:process-operation
-   #:daemon-version))
-
-(in-package #:com.wildora.dnssd.dispatcher)
+(in-package #:com.wildora.dnssd)
 
 (defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)
@@ -76,9 +68,9 @@
 
 (defparameter *default-cancel-timeout* 60)
 
-(defmethod cancel ((operation operation)
-                   &key callback
-                        (timeout *default-cancel-timeout*))
+(defun cancel (operation
+               &key callback
+                    (timeout *default-cancel-timeout*))
   (let (finished-waiting)
     (dispatcher-remove-operation operation
                                  (or callback

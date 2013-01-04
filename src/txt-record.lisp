@@ -1,5 +1,4 @@
-(defpackage #:com.wildora.dnssd.txt-record)
-(in-package #:com.wildora.dnssd.txt-record)
+(in-package #:com.wildora.dnssd)
 
 (defun bytes-to-string (sequence &key (start 0) (end (length sequence)))
   "Converts a sequence of bytes (unsigned-byte 8) to a string using ~

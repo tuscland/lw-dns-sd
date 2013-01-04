@@ -1,23 +1,7 @@
-(defpackage #:com.wildora.dnssd.api 
-  (:import-from #:com.wildora.dnssd.dispatcher
-   #:dispatch)
-  (:import-from #:com.wildora.dnssd.core
-   #:service-ref
-   #:dns-service-register
-   #:dns-service-enumerate-domains
-   #:dns-service-browse
-   #:dns-service-resolve
-   #:dns-service-get-addr-info
-   #:dns-service-query-record
-   #:dns-service-nat-port-mapping-create)
-  (:import-from #:com.wildora.dnssd.constants
-   #:+service-class-IN+
-   #:+service-type-PTR+))
-
-(in-package #:com.wildora.dnssd.api)
+(in-package #:com.wildora.dnssd)
 
 ;;;;
-;;;; Main API implementation
+;;;; Main API
 ;;;;
 
 (defun register (service

@@ -1,21 +1,4 @@
-(defpackage #:com.wildora.dnssd.operation
-  (:import-from #:com.wildora.dnssd.event
-   #:event
-   #:check-event
-   #:event-more-coming-p
-   #:make-event
-   #:make-operation-error-event)
-  (:import-from #:com.wildora.dnssd.conditions
-   #:error-code-p
-   #:dnssd-error)
-  (:import-from #:com.wildora.dnssd.foreign
-   #:dns-service-get-property
-   #:dns-service-sockfd
-   #:dns-service-deallocate
-   #:dns-service-process-result))
-
-(in-package #:com.wildora.dnssd.operation)
-
+(in-package #:com.wildora.dnssd)
 
 (defparameter *default-event-timeout* 60)
 

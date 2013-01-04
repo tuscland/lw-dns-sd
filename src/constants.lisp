@@ -1,5 +1,4 @@
-(defpackage #:com.wildora.dnssd.constants)
-(in-package #:com.wildora.dnssd.constants)
+(in-package #:com.wildora.dnssd)
 
 (defconstant +service-class-IN+      1)     ; Internet
 

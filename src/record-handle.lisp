@@ -1,4 +1,4 @@
-(in-package #:zeroconf)
+(in-package #:com.wildora.dnssd)
 
 (defclass record-operation (operation)
   ())
