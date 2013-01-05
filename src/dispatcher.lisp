@@ -6,6 +6,34 @@
 (defconstant *process-join-timeout* 10)
 
 
+(defun dispatcher-running-p ()
+  (mp:process-alive-p *process*))
+
+(defun dispatcher-start ()
+  (when (dispatcher-running-p)
+    (error "DNSSD Dispatcher is already started."))
+
+  #+win32 (fli:register-module "dnssd")
+  (assert (> (daemon-version) 0))
+
+  (setf *process*
+        (mp:process-run-function "DNSSD Dispatcher"
+                                 '(:mailbox t)
+                                 #'dispatcher-loop))
+  (values))
+
+(defun dispatcher-stop ()
+  (if (dispatcher-running-p)
+      (progn
+        (dispatcher-send #'(lambda ()
+                             (mp:process-kill
+                              (mp:get-current-process))))
+        (mp:process-join *process*
+                         :timeout *process-join-timeout*)
+        (setf *process* nil))
+    (warn "DNSSD Dispatcher not running"))  
+  (values))
+
 (defun %add-operation (operation)
   (push operation *operations*))
 
@@ -35,15 +63,14 @@
                                               #-lispworks6.1 (mp:mailbox-peek mailbox)))
         :do (with-simple-restart (abort "Return to event loop.")
               (if operation
-                  (when (process-operation operation)
+                  (when (operation-process operation)
                     (%remove-operation operation))
                   (mp:process-all-events)))
         :while t))
 
 (defun dispatcher-send (form)
-  (assert (not (null *process*))
-      ()
-    "DNSSD Dispatcher not running")
+  (when (not (dispatcher-running-p))
+    (dispatcher-start))
   (mp:process-send *process* form)
   (mp:process-poke *process*))
 
@@ -86,39 +113,3 @@
   (dispatcher-add-operation
    (apply #'make-instance 'operation
           operation-initargs)))
-
-(defun dispatcher-running-p ()
-  (mp:process-alive-p *process*))
-
-(defun dispatcher-start ()
-  (when (dispatcher-running-p)
-    (error "DNSSD Dispatcher is already started."))
-
-  #+win32 (fli:register-module "dnssd")
-  (assert (> (daemon-version) 0))
-
-  (setf *process*
-        (mp:process-run-function "DNSSD Dispatcher"
-                                 '(:mailbox t)
-                                 #'dispatcher-loop))
-  (values))
-
-(defun dispatcher-stop ()
-  (if (dispatcher-running-p)
-      (progn
-        (dispatcher-send #'(lambda ()
-                             (mp:process-kill
-                              (mp:get-current-process))))
-        (mp:process-join *process*
-                         :timeout *process-join-timeout*)
-        (setf *process* nil))
-    (warn "DNSSD Dispatcher not running"))  
-  (values))
-
-(defmacro with-dispatcher (&body body)
-  `(progn
-     (unless (dispatcher-running-p)
-       (dispatcher-start))
-     (unwind-protect
-         ,@body
-       (dispatcher-stop))))

@@ -50,19 +50,12 @@
    #:result-more-coming-p
 
    #:operation
-   #:operation-collect-results
-   #:operation-wait-result
+   #:operation-next-result
    #:operation-cancelled-p
    #:*default-result-timeout*
    #:result-timeout-error
 
-   #:dispatcher-start
-   #:dispatcher-stop
-   #:dispatcher-running-p
-   #:dispatch
    #:cancel
-   #:with-dispatcher
-   
    #:register
    #:enumerate-domains
    #:browse
@@ -70,7 +63,10 @@
    #:get-addr-info
    #:query-record
    #:nat-port-mapping-create
-   ))
+
+   #:dispatcher-start
+   #:dispatcher-stop
+   #:dispatcher-running-p))
 
 (defpackage #:com.wildora.dnssd-user
   (:nicknames #:dnssd-user)

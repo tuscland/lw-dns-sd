@@ -70,45 +70,32 @@
 (defmethod operation-next-result ((self operation)
                                   &key (timeout *default-result-timeout*))
   (check-result
-   (multiple-value-bind (object flag)
+   (multiple-value-bind (object no-timeout-p)
        (mp:mailbox-read (operation-results-queue self)
                         "Waiting for next operation result"
                         timeout)
-     (if flag
+     (if no-timeout-p
          object
        (error 'result-timeout-error)))))
 
-(defmethod operation-collect-results ((self operation)
-                                      &key (timeout *default-result-timeout*)
-                                           (test #'result-more-coming-p))
-  (loop :for result := (operation-next-result self :timeout timeout)
-        :collect result
-        :while (funcall test result)))
-
-(defmethod operation-wait-result ((self operation)
-                                  &key (test (constantly t))
-                                       (timeout *default-result-timeout*))
-  (loop :for result := (operation-next-result self :timeout timeout)
-        :when (funcall test result)
-        :do (return result)))
-
 (defmethod operation-invoke-callback ((self operation) (result result))
   (funcall (or (operation-callback self)
-               #'operation-enqueue-result) self result))
+               #'operation-enqueue-result)
+           self result))
 
 (defmethod operation-reply ((self operation) error-code more-coming-p &rest result-values)
   (maybe-signal-result-error error-code)
   (operation-invoke-callback self
                              (make-result more-coming-p result-values)))
 
-(defmethod %process-operation ((self operation))
+(defmethod %operation-process ((self operation))
   (with-current-operation self
     (dns-service-process-result (operation-handle self)))
   (%cancel-after-reply-p self))
 
-(defmethod process-operation ((self operation))
+(defmethod operation-process ((self operation))
   "Called from the dispatched to process pending results."
-  (handler-case (%process-operation self)
+  (handler-case (%operation-process self)
     (result-error (condition)
       (operation-invoke-callback self
                                  (make-operation-error-result condition))
