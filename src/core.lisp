@@ -266,6 +266,9 @@
 
 (defun dns-service-register (handle-ptr no-auto-rename service)
   (check-type service service)
+  (when (and no-auto-rename
+             (null (service-name service)))
+    (error "NO-AUTO-RENAME cannot be specified in conjunction with the default (nil) service name."))
   (let ((txt-record (build-txt-record
                      (service-properties service)))
         (flags (if no-auto-rename
