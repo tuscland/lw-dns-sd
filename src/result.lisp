@@ -47,7 +47,7 @@
 (defmethod check-result ((self error-result))
   (error (error-result-error self)))
 
-(defun make-operation-error-result (error)
+(defun make-error-result (error)
   (make-instance 'error-result :error error))
 
 (defun make-result (more-coming-p properties)

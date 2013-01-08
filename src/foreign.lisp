@@ -86,6 +86,8 @@ returns a value indicating that an error occurred."
          (let ((,result (,unwrapped-name ,@arg-names)))
            (maybe-signal-result-error ,result))))))
 
+(editor:setup-indent 'define-dnssd-function 1)
+
 (define-dnssd-function (dns-service-get-property
                         "DNSServiceGetProperty")
   ((property (:reference-pass dnssd-string))
@@ -95,31 +97,6 @@ returns a value indicating that an error occurred."
 (define-dnssd-function (dns-service-process-result
                         "DNSServiceProcessResult")
   ((sdref service-ref)))
-
-(define-dnssd-function (dns-service-add-record
-                        "DNSServiceAddRecord")
-  ((sdref service-ref)
-   (rdref (:pointer record-ref))
-   (flags flags-t)
-   (rrtype :uint16)
-   (rdlen :uint16)
-   (data (:const (:pointer :void)))
-   (ttl :uint32)))
-
-(define-dnssd-function (dns-service-update-record
-                        "DNSServiceUpdateRecord")
-  ((sdref service-ref)
-   (rdref record-ref)
-   (flags flags-t)
-   (rdlen :uint16)
-   (data (:const (:pointer :void)))
-   (ttl :uint32)))
-
-(define-dnssd-function (dns-service-remove-record
-                        "DNSServiceRemoveRecord")
-  ((sdref service-ref)
-   (rdref record-ref)
-   (flags flags-t)))
 
 
 ;;;;
@@ -202,3 +179,58 @@ returns a value indicating that an error occurred."
    (ttl :uint32)
    (callback (:pointer :function))
    (context (:pointer :void))))
+
+(define-dnssd-function (%dns-service-register-record
+                        "DNSServiceRegisterRecord")
+  ((sdref service-ref)
+   (rdref (:pointer record-ref))
+   (flags flags-t)
+   (interface-index :uint32)
+   (full-name (:reference-pass dnssd-string))
+   (rrtype :uint16)
+   (rrclass :uint16)
+   (rdlen :uint16)
+   (rdata (:pointer :void))
+   (ttl :uint32)
+   (callback (:pointer :function))
+   (context (:pointer :void))))
+
+
+(define-dnssd-function (dns-service-create-connection
+                        "DNSServiceCreateConnection")
+  ((sdref (:pointer service-ref))))
+
+(define-dnssd-function (%dns-service-add-record
+                        "DNSServiceAddRecord")
+  ((sdref service-ref)
+   (rdref (:pointer record-ref))
+   (flags flags-t)
+   (rrtype :uint16)
+   (rdlen :uint16)
+   (rdata (:pointer :void))
+   (ttl :uint32)))
+
+(define-dnssd-function (%dns-service-update-record
+                        "DNSServiceUpdateRecord")
+  ((sdref service-ref)
+   (rdref record-ref)
+   (flags flags-t)
+   (rdlen :uint16)
+   (data (:const (:pointer :void)))
+   (ttl :uint32)))
+
+(define-dnssd-function (%dns-service-remove-record
+                        "DNSServiceRemoveRecord")
+  ((sdref service-ref)
+   (rdref record-ref)
+   (flags flags-t)))
+
+(define-dnssd-function (%dns-service-reconfirm-record
+                        "DNSServiceReconfirmRecord")
+  ((flags flags-t)
+   (interface-index :uint32)
+   (full-name (:reference-pass dnssd-string))
+   (type :uint16)
+   (class :uint16)
+   (rdlen :uint16)
+   (rdata (:pointer :void))))

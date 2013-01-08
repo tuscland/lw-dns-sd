@@ -21,6 +21,7 @@
 (defconstant +flag-registration-domains+ #x080)
 (defconstant +flag-long-lived-query+     #x100)
 (defconstant +flag-force-multicast+      #x400)
+(defconstant +flag-force+                #x800)
 
 (defconstant +service-class-IN+      1)     ; Internet
 

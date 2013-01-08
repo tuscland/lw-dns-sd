@@ -45,11 +45,9 @@
                                                       (vector (length sub-record))
                                                       sub-record)))
                                    properties))))
-     ;; array must be static so it can be made available to FLI as a pointer
      (make-array (length sequence)
                  :element-type '(unsigned-byte 8)
-                 :initial-contents sequence
-                 :allocation :static))))
+                 :initial-contents sequence))))
 
 
 (defconstant +key-value-separator+ 61) ;; #\= in ASCII.

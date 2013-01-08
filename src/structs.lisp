@@ -92,16 +92,28 @@
 (def-dnssd-struct (record
                    (:constructor %make-record))
   interface-index
-  name
+  full-name
   type
-  class
+  (class +service-class-IN+)
   data
   ttl)
+
+(defun validate-record (&key interface-index full-name type class data ttl)
+  (check-type interface-index (integer 0))
+  (when full-name
+    (check-type full-name string))
+  (check-type type integer)
+  (when class
+    (check-type class integer))
+  (when data
+    (check-type data (array unsigned-byte)))
+  (check-type ttl integer))
 
 (defun make-record (&rest initargs)
   (unless (getf initargs :interface-index)
     (setf (getf initargs :interface-index)
           +interface-index-any+))
+  (apply 'validate-record initargs)
   (apply '%make-record initargs))
 
 (def-dnssd-struct (domain

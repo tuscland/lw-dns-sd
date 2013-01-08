@@ -52,13 +52,14 @@
         (dns-service-sockfd handle)))
 
 (defmethod cancel-operation ((self operation))
-  (if (operation-cancelled-p self)
+  (if (operation-canceled-p self)
       (warn "Operation ~A has already been canceled" self)
     (progn
       (dns-service-deallocate (operation-handle self))
-      (setf (operation-handle self) nil))))
+      (setf (fli:pointer-address
+             (operation-handle self)) 0))))
 
-(defmethod operation-cancelled-p ((self operation))
+(defmethod operation-canceled-p ((self operation))
   (fli:null-pointer-p
    (operation-handle self)))
 
@@ -88,16 +89,19 @@
   (operation-invoke-callback self
                              (make-result more-coming-p result-values)))
 
-(defmethod %operation-process ((self operation))
+(defmethod %process-result ((self operation))
   (with-current-operation self
-    (dns-service-process-result (operation-handle self)))
-  (%cancel-after-reply-p self))
+    (dns-service-process-result
+     (operation-handle self)))
+  (values))
 
-(defmethod operation-process ((self operation))
+(defmethod process-result ((self operation))
   "Called from the dispatched to process pending results."
-  (handler-case (%operation-process self)
+  (handler-case (%process-result self)
     (result-error (condition)
       (operation-invoke-callback self
-                                 (make-operation-error-result condition))
-      ;; return t to indicate that the operation is no longer valid
-      t)))
+                                 (make-error-result condition))
+      ;; tell that the operation got to be canceled now.
+      t)
+    (:no-error ()
+      (%cancel-after-reply-p self))))

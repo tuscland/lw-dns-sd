@@ -1,5 +1,17 @@
 (in-package #:com.wildora.dnssd)
 
+;;;;
+;;;; Foreign array support
+;;;;
+(defmacro with-static-array-pointer ((pointer array) &body body)
+  (with-unique-names (static-array)
+    `(let ((,static-array (make-array (length ,array)
+                                      :element-type '(unsigned-byte 8)
+                                      :allocation :static)))
+       (fli:replace-foreign-array ,static-array ,array)
+       (fli:with-dynamic-lisp-array-pointer (,pointer ,static-array)
+         ,@body))))
+
 (defun make-array-from-foreign-bytes (pointer length)
   (let ((array (make-array length :element-type '(unsigned-byte 8))))
     (fli:replace-foreign-array array pointer :end2 length)))
@@ -74,7 +86,7 @@
     (operation-reply (current-operation)
                      error-code
                      nil
-                     :success-p (eq (flags-get-presence flags) :add)
+                     :presence (flags-get-presence flags)
                      :service registered-service)))
 
 (fli:define-foreign-callable (dns-service-enumerate-domains-reply
@@ -238,6 +250,18 @@
                      :external-port external-port
                      :ttl ttl)))
 
+(fli:define-foreign-callable (dns-service-register-record-reply
+                              :result-type :void)
+    ((sdref service-ref)
+     (rdref record-ref)
+     (flags flags-t)
+     (error-code error-t)
+     (context (:pointer :void)))
+  (declare (ignore sdref context flags))
+  (operation-reply (current-operation)
+                   error-code
+                   nil
+                   :record-ref rdref))
 
 ;;;;
 ;;;; High level versions of operations functions
@@ -264,7 +288,7 @@
         +flag-long-lived-query+)
       +flag-no-flag+))
 
-(defun dns-service-register (handle-ptr no-auto-rename service)
+(defun dns-service-register (pointer no-auto-rename service)
   (check-type service service)
   (when (and no-auto-rename
              (null (service-name service)))
@@ -274,8 +298,9 @@
         (flags (if no-auto-rename
                    +flag-no-auto-rename+
                  +flag-no-flag+)))
-    (fli:with-dynamic-lisp-array-pointer (txt-ptr txt-record)
-      (%dns-service-register handle-ptr
+    (assert (< (length txt-record) 65536))
+    (with-static-array-pointer (txt-pointer txt-record)
+      (%dns-service-register pointer
                              flags
                              (service-interface-index service)
                              (service-name service)
@@ -285,31 +310,31 @@
                              (htons
                               (service-port service))
                              (length txt-record)
-                             txt-ptr
+                             txt-pointer
                              (make-callback-pointer 'dns-service-register-reply)
                              nil)))
   (values))
 
-(defun dns-service-enumerate-domains (handle-ptr interface-index domains)
+(defun dns-service-enumerate-domains (pointer interface-index domains)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
   (assert (member domains '(:browse-domains :registration-domains)))
   (let ((flags (cdr (assoc domains *enumerated-domains-flags*))))
     (%dns-service-enumerate-domains
-     handle-ptr
+     pointer
      flags
      interface-index
      (make-callback-pointer 'dns-service-enumerate-domains-reply)
      nil))
   (values))
 
-(defun dns-service-browse (handle-ptr type domain)
+(defun dns-service-browse (pointer type domain)
   (check-type type string)
   (when domain
     (check-type domain domain))
   (%dns-service-browse
-   handle-ptr
+   pointer
    0
    (if domain
        (domain-interface-index domain)
@@ -321,7 +346,7 @@
    nil)
   (values))
 
-(defun dns-service-resolve (handle-ptr service resolve-on-all-interfaces broadcasting)
+(defun dns-service-resolve (pointer service resolve-on-all-interfaces broadcasting)
   (when broadcasting
     (assert (eq broadcasting :force-multicast)))
   (let ((flags (broadcasting-option-to-flag broadcasting))
@@ -329,7 +354,7 @@
                              +interface-index-any+
                            (service-interface-index service))))
     (%dns-service-resolve
-     handle-ptr
+     pointer
      flags
      interface-flags
      (service-name service)
@@ -339,7 +364,7 @@
      nil))
   (values))
 
-(defun dns-service-get-addr-info (handle-ptr hostname interface-index protocol broadcasting)
+(defun dns-service-get-addr-info (pointer hostname interface-index protocol broadcasting)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
@@ -354,7 +379,7 @@
                             (when (eq protocol :ipv6)
                               +protocol-ipv6+))))
     (%dns-service-get-addr-info
-     handle-ptr
+     pointer
      flags
      interface-index
      protocol-flags
@@ -363,7 +388,7 @@
      nil))
   (values))
 
-(defun dns-service-query-record (handle-ptr full-name type class interface-index broadcasting)
+(defun dns-service-query-record (pointer full-name type class interface-index broadcasting)
   (check-type full-name string)
   (check-type type integer)
   (check-type class integer)
@@ -374,7 +399,7 @@
     (assert (member broadcasting
                     '(:force-multicast :long-lived-query))))
   (%dns-service-query-record
-   handle-ptr
+   pointer
    (broadcasting-option-to-flag broadcasting)
    interface-index
    full-name
@@ -395,7 +420,7 @@
                                  (cdr (assoc protocol *protocols-flags*))))
         :finally (return flags)))
 
-(defun dns-service-nat-port-mapping-create (handle-ptr interface-index protocols internal-port external-port ttl)
+(defun dns-service-nat-port-mapping-create (pointer interface-index protocols internal-port external-port ttl)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
@@ -404,7 +429,7 @@
   (check-type external-port (integer 0))
   (check-type ttl (integer 0))
   (%dns-service-nat-port-mapping-create
-   handle-ptr
+   pointer
    0
    interface-index
    (protocols-to-flags protocols)
@@ -413,4 +438,98 @@
    ttl
    (make-callback-pointer 'dns-service-nat-port-mapping-create-reply)
    nil)
+  (values))
+
+(defun dns-service-register-record (service-ref pointer identity interface-index full-name type class data ttl)
+  (assert (not (fli:null-pointer-p service-ref)))
+  (assert (member identity '(:shared :unique)))
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
+  (check-type full-name string)
+  (check-type type integer)
+  (check-type class integer)
+  (check-type data (array (unsigned-byte 8)))
+  (assert (< (length data) 65536))
+  (check-type ttl integer)
+  (let ((flags (or (when (eq identity :shared)
+                     +flag-shared+)
+                   (when (eq identity :unique)
+                     +flag-unique+))))
+    (with-static-array-pointer (data-pointer data)
+      (%dns-service-register-record
+       service-ref
+       pointer
+       flags
+       interface-index
+       full-name
+       type
+       class
+       (length data)
+       data-pointer
+       ttl
+       (make-callback-pointer 'dns-service-register-record-reply)
+       nil)))
+  (values))
+
+(defun dns-service-add-record (service-ref record-pointer type data ttl)
+  (assert (not (fli:null-pointer-p service-ref)))
+  (check-type type integer)
+  (check-type data (array (unsigned-byte 8)))
+  (assert (< (length data) 65536))
+  (check-type ttl integer)
+  (with-static-array-pointer (data-pointer data)
+    (%dns-service-add-record
+     service-ref
+     record-pointer
+     0
+     type
+     (length data)
+     data-pointer
+     ttl))
+  (values))
+
+(defun dns-service-update-record (service-ref record-ref data ttl)
+  (assert (not (fli:null-pointer-p service-ref)))
+  (check-type data (array (unsigned-byte 8)))
+  (assert (< (length data) 65536))
+  (check-type ttl integer)
+  (with-static-array-pointer (data-pointer data)
+    (%dns-service-update-record
+     service-ref
+     record-ref
+     0
+     (length data)
+     data-pointer
+     ttl))
+  (values))
+
+(defun dns-service-remove-record (service-ref record-ref)
+  (assert (not (fli:null-pointer-p service-ref)))
+  (%dns-service-remove-record
+   service-ref
+   record-ref
+   0)
+  (setf (fli:pointer-address record-ref) 0)
+  (values))
+
+(defun dns-service-reconfirm-record (force interface-index full-name type class data)
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
+  (check-type full-name string)
+  (check-type type integer)
+  (check-type class integer)
+  (check-type data (array (unsigned-byte 8)))
+  (assert (< (length data) 65536))
+  (let ((flags (if force
+                   +flag-force+
+                 +flag-no-flag+)))
+    (with-static-array-pointer (data-pointer data)
+      (%dns-service-reconfirm-record
+       flags
+       interface-index
+       full-name
+       type
+       class
+       (length data)
+       data-pointer)))
   (values))

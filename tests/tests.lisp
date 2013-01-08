@@ -31,7 +31,9 @@
 (test service-equal
   (let ((service1 (make-test-service))
         (service2 (make-test-service))
-        (service3 (make-service :interface-index 1 :type "_test._udp" :port 9999)))
+        (service3 (make-service :interface-index 1
+                                :type "_test._udp"
+                                :port 9999)))
     (is (service-equal service1 service2))
     (is-false (service-equal service1 service3))))
 
@@ -54,7 +56,7 @@
   (let* ((service (make-service :type "_test._udp." :port 9999))
          (operation (register service))
          (result (operation-next-result operation)))
-    (is-true (result-property result :success-p))
+    (is (eq (result-property result :presence) :add))
     (cancel operation)))
 
 (test (register-service-type-error :depends-on dispatch-run)
@@ -69,34 +71,33 @@
       (result-property result :unknown-property))
     (cancel operation)))
 
-(defun do-registration-conflict (provoke-conflict-error)
+(defun do-registration-conflict (conflict-error-p)
   ;; 1. register a dummy service, automatically named
   (let* ((operation (register (make-test-service "Registration Conflict")
-                              :no-auto-rename provoke-conflict-error))
+                              :no-auto-rename conflict-error-p))
          (result (operation-next-result operation))
          (service (result-property result :service)))
-    (is-true (result-property result :success-p))
+    (is (eq (result-property result :presence) :add))
     ;; 2. register a service with the same name, but on a different
     ;; port for conflict
     (let* ((conflict-service (merge-service service
                                             :port (1+ (service-port service))))
            (conflict-operation (register conflict-service :no-auto-rename t))
            (result (operation-next-result conflict-operation)))
-      (is-true (result-property result :success-p))
-      ;; 3. Zeroconf will automatically rename our first service
-      ;; after some time, by notifying on the first operation.
-      (if provoke-conflict-error
-          ;; This will signal a name-conflict-error
+      (is (eq (result-property result :presence) :add))
+      (if conflict-error-p
+          ;; 3a. conflict error: a condition is signaled when getting
+          ;; the next result on the first operation.
           (signals dnssd-error
             (operation-next-result operation))
-        ;; In the latter case, the original service will be renamed,
-        ;; so we must handle the callbacks.
+        ;; 3b. DNS-SD automatically renames our first service after
+        ;; some time, by notifying on the first operation.
         (let ((result (operation-next-result operation)))
-          (is-false (result-property result :success-p))
+          (is (eq (result-property result :presence) :remove))
           ;; 4. The service has eventually been renamed, compare
           ;; that the new name is different.
           (let ((result (operation-next-result operation)))
-            (is-true (result-property result :success-p))
+            (is (eq (result-property result :presence) :add))
             (is (not (string= (service-name service)
                               (service-name
                                (result-property result :service))))))))
@@ -152,7 +153,7 @@
   (let* ((operation (register (make-test-service "Browse Test Service")))
          (result (operation-next-result operation))
          (service (result-property result :service)))
-    (is-true (result-property result :success-p))
+    (is (eq (result-property result :presence) :add))
     (let* ((domain (make-domain :name (service-domain-name service)))
            (browse-operation (browse *test-service-type* :domain domain)))
       (finishes
@@ -215,3 +216,8 @@
     (is (zerop (result-property result :external-port)))
     (is (zerop (result-property result :ttl)))
     (cancel operation)))
+
+(test (create-connection :depends-on dispatch-run)
+  (finishes
+    (let ((operation (create-connection)))
+      (cancel operation))))

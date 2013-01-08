@@ -63,7 +63,7 @@
                                               #-lispworks6.1 (mp:mailbox-peek mailbox)))
         :do (with-simple-restart (abort "Return to event loop.")
               (if operation
-                  (when (operation-process operation)
+                  (when (process-result operation)
                     (%remove-operation operation))
                   (mp:process-all-events)))
         :while t))
@@ -102,7 +102,7 @@
                                      #'(lambda ()
                                          (setf finished-waiting t))))
     (when (not (null callback))
-      (unless (mp:process-wait-with-timeout "Waiting for operation to be cancelled."
+      (unless (mp:process-wait-with-timeout "Waiting for operation to be canceled."
                                             timeout
                                             #'(lambda ()
                                                 finished-waiting))
