@@ -10,17 +10,6 @@
     (fli:dereference result)))
 
 
-(declaim (special-dynamic *current-operation*))
-
-(defun current-operation ()
-  (assert (not (null *current-operation*)))
-  *current-operation*)
-
-(defmacro with-current-operation (operation &body body)
-  `(let ((*current-operation* ,operation))
-     ,@body))
-
-
 (define-condition result-timeout-error (dnssd-error)
   ())
 
@@ -29,14 +18,6 @@
     :accessor operation-handle
     :initform (error "HANDLE must be specified")
     :initarg :handle)
-   (cancel-after-reply-p
-    :reader %cancel-after-reply-p
-    :initform nil
-    :initarg :cancel-after-reply)
-   (service-prototype
-    :reader operation-service-prototype
-    :initform nil
-    :initarg :service-prototype)
    (callback
     :reader operation-callback
     :initform nil
@@ -84,24 +65,21 @@
                #'operation-enqueue-result)
            self result))
 
-(defmethod operation-reply ((self operation) error-code more-coming-p &rest result-values)
-  (maybe-signal-result-error error-code)
-  (operation-invoke-callback self
-                             (make-result more-coming-p result-values)))
 
-(defmethod %process-result ((self operation))
-  (with-current-operation self
-    (dns-service-process-result
-     (operation-handle self)))
-  (values))
+(declaim (special-dynamic *current-operation*))
+
+(defmethod reply (error-code more-coming-p &rest result-values)
+  (maybe-signal-result-error error-code)
+  (assert *current-operation*)
+  (operation-invoke-callback *current-operation*
+                             (make-result more-coming-p result-values)))
 
 (defmethod process-result ((self operation))
   "Called from the dispatched to process pending results."
-  (handler-case (%process-result self)
-    (result-error (condition)
-      (operation-invoke-callback self
-                                 (make-error-result condition))
-      ;; tell that the operation got to be canceled now.
-      t)
-    (:no-error ()
-      (%cancel-after-reply-p self))))
+  (handler-bind ((result-error
+                  #'(lambda (condition)
+                      (operation-invoke-callback
+                       self (make-error-result condition)))))
+    (let ((*current-operation* self))
+      (dns-service-process-result
+       (operation-handle self)))))

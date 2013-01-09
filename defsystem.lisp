@@ -8,7 +8,6 @@
             "constants"
             "conditions"
             "txt-record"
-            "structs"
             "result"
             "foreign"
             "operation"

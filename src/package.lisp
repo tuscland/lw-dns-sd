@@ -11,40 +11,6 @@
    #:result-error
    #:result-error-code
 
-   #:service
-   #:service-p
-   #:service-equal
-   #:copy-service
-   #:make-service
-   #:merge-service
-   #:service-interface-index
-   #:service-name
-   #:service-full-name
-   #:service-type
-   #:service-domain-name
-   #:service-host
-   #:service-port
-   #:service-properties
-
-   #:record
-   #:record-p
-   #:copy-record
-   #:make-record
-   #:record-interface-index
-   #:record-name
-   #:record-type
-   #:record-class
-   #:record-data
-   #:record-ttl
-
-   #:domain
-   #:domain-p
-   #:domain-equal
-   #:make-domain
-   #:domain-interface-index
-   #:domain-name
-   #:domain-defaultp
-
    #:result
    #:result-properties
    #:result-property

@@ -63,9 +63,11 @@
                                               #-lispworks6.1 (mp:mailbox-peek mailbox)))
         :do (with-simple-restart (abort "Return to event loop.")
               (if operation
-                  (when (process-result operation)
-                    (%remove-operation operation))
-                  (mp:process-all-events)))
+                  (handler-case (process-result operation)
+                    (result-error (condition)
+                      (declare (ignore condition))
+                      (%remove-operation operation)))
+                (mp:process-all-events)))
         :while t))
 
 (defun dispatcher-send (form)

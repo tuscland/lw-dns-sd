@@ -4,16 +4,18 @@
 ;;;; Main API
 ;;;;
 
-(defun register (service
+(defun register (port type
                  &key callback
+                      interface-index
+                      name
+                      domain
+                      host
+                      txt-record
                       no-auto-rename)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
-    (dns-service-register pointer
-                          no-auto-rename
-                          service)
+    (dns-service-register pointer no-auto-rename interface-index name type domain host port txt-record)
     (dispatch :handle (fli:dereference pointer)
-              :callback callback
-              :service-prototype service)))
+              :callback callback)))
 
 (defun enumerate-domains (&key callback
                                interface-index
@@ -25,22 +27,22 @@
 
 (defun browse (type
                &key callback
+                    interface-index
                     domain)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
-    (dns-service-browse pointer type domain)
+    (dns-service-browse pointer interface-index type domain)
     (dispatch :handle (fli:dereference pointer)
               :callback callback)))
 
-(defun resolve (service
+(defun resolve (name type domain
                 &key callback
+                     interface-index
                      (resolve-on-all-interfaces t)
                      broadcasting)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
-    (dns-service-resolve pointer service resolve-on-all-interfaces broadcasting)
+    (dns-service-resolve pointer resolve-on-all-interfaces broadcasting interface-index name type domain)
     (dispatch :handle (fli:dereference pointer)
-              :callback callback
-              :service-prototype service
-              :cancel-after-reply t)))
+              :callback callback)))
 
 (defun get-addr-info (hostname
                       &key callback
@@ -50,15 +52,14 @@
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
     (dns-service-get-addr-info pointer hostname interface-index protocol broadcasting)
     (dispatch :handle (fli:dereference pointer)
-              :callback callback
-              :cancel-after-reply t)))
+              :callback callback)))
 
-(defun query-record (full-name type class
+(defun query-record (full-name rrtype rrclass
                      &key callback
                           interface-index
                           broadcasting)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
-    (dns-service-query-record pointer full-name type class interface-index broadcasting)
+    (dns-service-query-record pointer full-name rrtype rrclass interface-index broadcasting)
     (dispatch :handle (fli:dereference pointer)
               :callback callback)))
 
@@ -71,11 +72,7 @@
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
     (dns-service-nat-port-mapping-create pointer interface-index protocols internal-port external-port ttl)
     (dispatch :handle (fli:dereference pointer)
-              :callback callback
-              :cancel-after-reply (and (zerop internal-port)
-                                       (zerop external-port)
-                                       (zerop ttl)
-                                       (null protocols)))))
+              :callback callback)))
 
 (defun create-connection (&key callback)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
@@ -84,42 +81,41 @@
               :callback callback)))
 
 (defun register-record (operation
-                        full-name type class data
+                        full-name rrtype rrclass rdata
                         &key interface-index
                              identity
                              (ttl 0))
   (fli:with-dynamic-foreign-objects ((pointer record-ref))
     (dns-service-register-record (operation-handle operation)
-                                 pointer identity interface-index full-name type class data ttl)
+                                 pointer identity interface-index full-name rrtype rrclass rdata ttl)
     (fli:dereference pointer)))
 
-(defun add-record (operation type data
+(defun add-record (operation rrtype rdata
                    &key (ttl 0))
   (when (operation-canceled-p operation)
-    (error "Cannot add a record on a canceled operation"))
+    (error "Cannot add a record with a canceled operation"))
   (fli:with-dynamic-foreign-objects ((pointer record-ref))
     (dns-service-add-record (operation-handle operation)
-                            pointer type data ttl)
+                            pointer rrtype rdata ttl)
     (fli:dereference pointer)))
 
-(defun update-record (operation
-                      record-ref data
+(defun update-record (operation record-ref rdata
                       &key (ttl 0))
   (when (operation-canceled-p operation)
-    (error "Cannot add a record on a canceled operation"))
+    (error "Cannot add a record with a canceled operation"))
   (dns-service-update-record (operation-handle operation)
-                             record-ref data ttl))
+                             record-ref rdata ttl))
 
 (defun remove-record (operation record-ref)
   (when (operation-canceled-p operation)
-    (error "Cannot remove a record on a canceled operation"))
+    (error "Cannot remove a record with a canceled operation"))
   (dns-service-remove-record (operation-handle operation)
                              record-ref))
 
-(defun reconfirm-record (full-name type class data
+(defun reconfirm-record (full-name rrtype rrclass rdata
                          &key interface-index
                               force)
-  (dns-service-reconfirm-record force interface-index full-name type class data))
+  (dns-service-reconfirm-record force interface-index full-name rrtype rrclass rdata))
 
 ;;;;
 ;;;; Handful additions

@@ -77,17 +77,12 @@
      (domain (:reference-return dnssd-string :allow-null t))
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let* ((registered-service
-          (merge-service (operation-service-prototype
-                          (current-operation))
-                         :name name
-                         :type type
-                         :domain-name domain)))
-    (operation-reply (current-operation)
-                     error-code
-                     nil
-                     :presence (flags-get-presence flags)
-                     :service registered-service)))
+  (reply error-code
+         nil
+         :presence (flags-get-presence flags)
+         :name name
+         :type type
+         :domain domain))
 
 (fli:define-foreign-callable (dns-service-enumerate-domains-reply
                               :result-type :void)
@@ -95,18 +90,15 @@
      (flags flags-t)
      (interface-index :uint32)
      (error-code error-t)
-     (domain-name (:reference-return dnssd-string :allow-null t))
+     (domain (:reference-return dnssd-string :allow-null t))
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let ((domain
-         (make-domain :interface-index interface-index
-                      :name domain-name
-                      :defaultp (flags-default-p flags))))
-    (operation-reply (current-operation)
-                     error-code 
-                     (flags-more-coming-p flags)
-                     :presence (flags-get-presence flags)
-                     :domain domain)))
+  (reply error-code 
+         (flags-more-coming-p flags)
+         :presence (flags-get-presence flags)
+         :defaultp (flags-default-p flags)
+         :interface-index interface-index
+         :domain domain))
 
 (fli:define-foreign-callable (dns-service-browse-reply
                               :result-type :void)
@@ -119,16 +111,13 @@
      (domain (:reference-return dnssd-string))
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let ((service
-         (make-service :interface-index interface-index
-                       :name name
-                       :type type
-                       :domain-name domain)))
-    (operation-reply (current-operation)
-                     error-code
-                     (flags-more-coming-p flags)
-                     :presence (flags-get-presence flags)
-                     :service service)))
+  (reply error-code
+         (flags-more-coming-p flags)
+         :presence (flags-get-presence flags)
+         :interface-index interface-index
+         :name name
+         :type type
+         :domain domain))
 
 (fli:define-foreign-callable (dns-service-resolve-reply
                               :result-type :void)
@@ -143,20 +132,16 @@
      (txt-record-bytes (:pointer (:unsigned :char)))
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let* ((txt-record
-          (make-array-from-foreign-bytes txt-record-bytes txt-record-size))
-         (resolved-service
-          (merge-service (operation-service-prototype
-                          (current-operation))
-                         :interface-index interface-index
-                         :full-name full-name
-                         :host host
-                         :port (ntohs port)
-                         :properties (parse-txt-record txt-record))))
-    (operation-reply (current-operation)
-                     error-code
-                     (flags-more-coming-p flags)
-                     :service resolved-service)))
+  (let ((txt-record (parse-txt-record
+                     (make-array-from-foreign-bytes txt-record-bytes
+                                                    txt-record-size))))
+    (reply error-code
+           (flags-more-coming-p flags)
+           :interface-index interface-index
+           :full-name full-name
+           :host host
+           :port (ntohs port)
+           :txt-record txt-record)))
 
 (fli:define-foreign-callable (dns-service-get-addr-info-reply
                               :result-type :void)
@@ -169,17 +154,15 @@
      (ttl :uint32)
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let ((address
-         (when addr
-           (ip-address-from-sockaddr addr))))
-    (operation-reply (current-operation)
-                     error-code
-                     (flags-more-coming-p flags)
-                     :success-p (eq (flags-get-presence flags) :add)
-                     :interface-index interface-index
-                     :hostname hostname
-                     :address address
-                     :ttl ttl)))
+  (let ((address (when addr
+                   (ip-address-from-sockaddr addr))))
+    (reply error-code
+           (flags-more-coming-p flags)
+           :presence (flags-get-presence flags)
+           :interface-index interface-index
+           :hostname hostname
+           :address address
+           :ttl ttl)))
 
 (fli:define-foreign-callable (dns-service-query-record-reply
                               :result-type :void)
@@ -195,20 +178,16 @@
      (ttl :uint32)
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let* ((data
-          (make-array-from-foreign-bytes rdata rdlen))
-         (record
-          (make-record :interface-index interface-index
-                       :name full-name
-                       :type rrtype
-                       :class rrclass
-                       :data data
-                       :ttl ttl)))
-    (operation-reply (current-operation)
-                     error-code
-                     (flags-more-coming-p flags)
-                     :presence (flags-get-presence flags)
-                     :record record)))
+  (let ((data (make-array-from-foreign-bytes rdata rdlen)))
+    (reply error-code
+           (flags-more-coming-p flags)
+           :presence (flags-get-presence flags)
+           :interface-index interface-index
+           :full-name full-name
+           :rrtype rrtype
+           :rrclass rrclass
+           :rdata data
+           :ttl ttl)))
 
 (defun flags-get-protocols (flags)
   (remove-if #'null
@@ -239,16 +218,14 @@
      (ttl :uint32)
      (context (:pointer :void)))
   (declare (ignore sdref context flags))
-  (let* ((address external-address))
-    (operation-reply (current-operation)
-                     error-code
-                     nil
-                     :interface-index interface-index
-                     :external-address (ip-address-from-int32 address)
-                     :protocols (flags-get-protocols protocol)
-                     :internal-port internal-port
-                     :external-port external-port
-                     :ttl ttl)))
+  (reply error-code
+         nil
+         :interface-index interface-index
+         :external-address (ip-address-from-int32 external-address)
+         :protocols (flags-get-protocols protocol)
+         :internal-port internal-port
+         :external-port external-port
+         :ttl ttl))
 
 (fli:define-foreign-callable (dns-service-register-record-reply
                               :result-type :void)
@@ -258,10 +235,9 @@
      (error-code error-t)
      (context (:pointer :void)))
   (declare (ignore sdref context flags))
-  (operation-reply (current-operation)
-                   error-code
-                   nil
-                   :record-ref rdref))
+  (reply error-code
+         nil
+         :record-ref rdref))
 
 ;;;;
 ;;;; High level versions of operations functions
@@ -272,6 +248,11 @@
                                   :functionp t)))
     (assert (not (fli:null-pointer-p result)))
     result))
+
+;; FIXME: domain name checks are buggy because the length should
+;; account for the *escaped* string, not the input string
+(defconstant +max-domain-name-length+ 1008)
+(defconstant +max-service-name-length+ 63)
 
 ;;;;
 ;;;; Keyword options to flags translation
@@ -288,27 +269,37 @@
         +flag-long-lived-query+)
       +flag-no-flag+))
 
-(defun dns-service-register (pointer no-auto-rename service)
-  (check-type service service)
+(defun dns-service-register (pointer no-auto-rename interface-index name type domain host port txt-record)
+  (unless interface-index
+    (setf interface-index +interface-index-any+))
+  (when name
+    (check-type name string)
+    (assert (< (length name) +max-service-name-length+)))
+  (check-type type string)
+  (when domain
+    (check-type domain string)
+    (assert (< (length domain) +max-domain-name-length+)))
+  (when host
+    (check-type host string))
+  (check-type port (integer 0))
   (when (and no-auto-rename
-             (null (service-name service)))
-    (error "NO-AUTO-RENAME cannot be specified in conjunction with the default (nil) service name."))
-  (let ((txt-record (build-txt-record
-                     (service-properties service)))
-        (flags (if no-auto-rename
+             (null name))
+    (error "NO-AUTO-RENAME cannot be specified in conjunction with the default (nil) service NAME."))
+  (assert (< (length txt-record) 65536))
+  (unless txt-record
+    (setf txt-record (build-txt-record nil)))
+  (let ((flags (if no-auto-rename
                    +flag-no-auto-rename+
                  +flag-no-flag+)))
-    (assert (< (length txt-record) 65536))
     (with-static-array-pointer (txt-pointer txt-record)
       (%dns-service-register pointer
                              flags
-                             (service-interface-index service)
-                             (service-name service)
-                             (service-type service)
-                             (service-domain-name service)
-                             (service-host service)
-                             (htons
-                              (service-port service))
+                             interface-index
+                             name
+                             type
+                             domain
+                             host
+                             (htons port)
                              (length txt-record)
                              txt-pointer
                              (make-callback-pointer 'dns-service-register-reply)
@@ -329,39 +320,41 @@
      nil))
   (values))
 
-(defun dns-service-browse (pointer type domain)
+(defun dns-service-browse (pointer interface-index type domain)
+  (unless interface-index
+    (setf interface-index +interface-index-any+)) 
   (check-type type string)
   (when domain
-    (check-type domain domain))
+    (check-type domain string))
   (%dns-service-browse
    pointer
    0
-   (if domain
-       (domain-interface-index domain)
-     +interface-index-any+)
+   interface-index
    type
-   (when domain
-     (domain-name domain))
+   domain
    (make-callback-pointer 'dns-service-browse-reply)
    nil)
   (values))
 
-(defun dns-service-resolve (pointer service resolve-on-all-interfaces broadcasting)
+(defun dns-service-resolve (pointer resolve-on-all-interfaces broadcasting interface-index name type domain)
+  (setf interface-index (if resolve-on-all-interfaces
+                            +interface-index-any+
+                          (or interface-index
+                              +interface-index-any+)))
   (when broadcasting
     (assert (eq broadcasting :force-multicast)))
-  (let ((flags (broadcasting-option-to-flag broadcasting))
-        (interface-flags (if resolve-on-all-interfaces
-                             +interface-index-any+
-                           (service-interface-index service))))
-    (%dns-service-resolve
-     pointer
-     flags
-     interface-flags
-     (service-name service)
-     (service-type service)
-     (service-domain-name service)
-     (make-callback-pointer 'dns-service-resolve-reply)
-     nil))
+  (check-type name string)
+  (check-type type string)
+  (check-type domain string)
+  (%dns-service-resolve
+   pointer
+   (broadcasting-option-to-flag broadcasting)
+   interface-index
+   name
+   type
+   domain
+   (make-callback-pointer 'dns-service-resolve-reply)
+   nil)
   (values))
 
 (defun dns-service-get-addr-info (pointer hostname interface-index protocol broadcasting)
@@ -373,14 +366,13 @@
   (when broadcasting
     (assert (member broadcasting
                     '(:force-multicast :long-lived-query))))
-  (let ((flags (broadcasting-option-to-flag broadcasting))
-        (protocol-flags (or (when (eq protocol :ipv4)
+  (let ((protocol-flags (or (when (eq protocol :ipv4)
                               +protocol-ipv4+)
                             (when (eq protocol :ipv6)
                               +protocol-ipv6+))))
     (%dns-service-get-addr-info
      pointer
-     flags
+     (broadcasting-option-to-flag broadcasting)
      interface-index
      protocol-flags
      hostname
