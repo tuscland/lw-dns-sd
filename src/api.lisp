@@ -117,6 +117,12 @@
                               force)
   (dns-service-reconfirm-record force interface-index full-name rrtype rrclass rdata))
 
+(defun construct-full-name (service type domain)
+  (fli:with-dynamic-foreign-objects ((buffer :char
+                                      :nelems +max-domain-name-length+))
+    (dns-service-construct-full-name buffer service type domain)
+    (fli:convert-from-foreign-string buffer)))
+
 ;;;;
 ;;;; Handful additions
 ;;;;

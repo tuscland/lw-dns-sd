@@ -6,7 +6,7 @@
             "package"
             "if-name"
             "constants"
-            "conditions"
+            "errors"
             "txt-record"
             "result"
             "foreign"

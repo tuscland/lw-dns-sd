@@ -251,8 +251,8 @@
 
 ;; FIXME: domain name checks are buggy because the length should
 ;; account for the *escaped* string, not the input string
-(defconstant +max-domain-name-length+ 1008)
-(defconstant +max-service-name-length+ 63)
+(defconstant +max-domain-name-length+ 1009)
+(defconstant +max-service-name-length+ 64)
 
 ;;;;
 ;;;; Keyword options to flags translation

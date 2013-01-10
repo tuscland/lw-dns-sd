@@ -38,7 +38,10 @@
     test-resolve
     test-get-addr-info
     test-nat-port-mapping-create
-    test-create-connection))
+    test-create-connection
+    test-construct-full-name
+    test-txt-record
+    test-record-crud))
 
 (defun run-tests ()
   (map nil #'(lambda (test)
@@ -235,3 +238,60 @@
 (defun test-create-connection ()
   (let ((operation (create-connection)))
     (cancel operation)))
+
+(defun test-construct-full-name ()
+  (let ((actual (construct-full-name "foo service" "_bar._udp" "local"))
+        (expected "foo\\032service._bar._udp.local."))
+    (assert (string= actual expected)))
+  (let ((actual (construct-full-name nil "_bar._udp" "local"))
+        (expected "_bar._udp.local."))
+    (assert (string= actual expected))))
+
+(defvar *test-txt-properties*
+  '(("key1.wildora.com" . "value1")
+    ("key2.wildora.com" . "value2")
+    ("eat-glass.wildora.com" . "Ek get etið gler án þess að verða sár")))
+
+(defun test-txt-record ()
+  (let ((properties *test-txt-properties*))
+    (assert (equalp (parse-txt-record
+                     (build-txt-record properties))
+                    properties))))
+
+(defun test-record-crud ()
+  (let* ((record-type dnssd::+service-type-txt+)
+         (record-class dnssd::+service-class-in+)
+         (operation (register *test-service-port*
+                              *test-service-type*))
+         (result (operation-next-result operation)))
+    (unwind-protect
+        (progn
+          (test-presence result)
+          (let* ((record-data (build-txt-record *test-txt-properties*))
+                 (record-ref (add-record operation record-type record-data)))
+            (assert record-ref)
+            (let* ((full-name (construct-full-name (result-property result :name)
+                                                   *test-service-type*
+                                                   "local"))
+                   (operation (query-record full-name record-type record-class))
+                   ;; For some reason DNS-SD returns two results, one
+                   ;; with empty rdata and the other with our
+                   ;; txt-record.
+                   (result (operation-next-result-if #'(lambda (result)
+                                                         (not (null (parse-txt-record
+                                                          (result-property result :rdata)))))
+                                                     operation)))
+              (test-presence result)
+              (assert (string= (result-property result :full-name)
+                               full-name))
+              (assert (= (result-property result :rrtype)
+                         record-type))
+              (assert (= (result-property result :rrclass)
+                         record-class))
+              (assert (equalp (result-property result :rdata)
+                              record-data))
+              (cancel operation))
+            (update-record operation record-ref
+                           (build-txt-record '(("foo.wildora.com" . "bar"))))
+            (remove-record operation record-ref)))
+        (cancel operation))))

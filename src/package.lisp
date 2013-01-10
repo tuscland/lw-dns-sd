@@ -40,6 +40,10 @@
    #:remove-record
    #:register-record
    #:reconfirm-record
+   
+   #:construct-full-name
+   #:string-to-bytes
+   #:bytes-to-string
 
    #:dispatcher-start
    #:dispatcher-stop

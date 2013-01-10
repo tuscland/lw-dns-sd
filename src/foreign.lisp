@@ -1,10 +1,10 @@
 (in-package #:com.wildora.dnssd)
 
-(fli:define-foreign-type service-ref ()
-  '(:pointer :void))
+(fli:define-c-typedef service-ref
+  :pointer)
 
-(fli:define-foreign-type record-ref ()
-  '(:pointer :void))
+(fli:define-c-typedef record-ref
+  :pointer)
 
 (fli:define-foreign-type dnssd-string ()
   `(:ef-mb-string
@@ -86,8 +86,6 @@ returns a value indicating that an error occurred."
          (let ((,result (,unwrapped-name ,@arg-names)))
            (maybe-signal-result-error ,result))))))
 
-(editor:setup-indent 'define-dnssd-function 1)
-
 (define-dnssd-function (dns-service-get-property
                         "DNSServiceGetProperty")
   ((property (:reference-pass dnssd-string))
@@ -98,6 +96,12 @@ returns a value indicating that an error occurred."
                         "DNSServiceProcessResult")
   ((sdref service-ref)))
 
+(define-dnssd-function (dns-service-construct-full-name
+                        "DNSServiceConstructFullName")
+  ((full-name (:pointer :char))
+   (service (:reference-pass dnssd-string :allow-null t))
+   (type (:reference-pass dnssd-string))
+   (domain (:reference-pass dnssd-string))))
 
 ;;;;
 ;;;; Low level versions of operations functions
