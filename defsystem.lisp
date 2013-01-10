@@ -29,8 +29,7 @@
 
 (defsystem #:dnssd-tests
   (:default-pathname "tests")
-  :members (("eos" :type :system)
-            ("dnssd" :type :system)
+  :members (("dnssd" :type :system)
             "package"
             "tests")
   :rules ((:in-order-to :compile :all

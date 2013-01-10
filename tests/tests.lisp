@@ -2,9 +2,6 @@
 
 (in-package #:com.wildora.dnssd-tests)
 
-(def-suite dnssd)
-(in-suite dnssd)
-
 (defparameter *test-service-type* "_test._udp")
 (defparameter *test-service-port* 9999)
 (defconstant +test-timeout+ 2)
@@ -14,42 +11,78 @@
         :when (funcall predicate result)
         :do (return result)))
 
-(test if-name
-  (let ((interfaces (if-name-index)))
-    (is (not (null interfaces)))
-    (loop :for (index . name) :in interfaces
-          :do
-          (is (string-equal name (if-index-to-name index)))
-          (is (= index (if-name-to-index name))))))
+(defmacro signals (error &body body)
+  `(handler-case (progn ,@body)
+     (,error (condition)
+       (declare (ignore condition))
+       t)
+     (condition (conndition)
+       (declare (ignore condition))
+       (error "Expected a condition of type ~A" ',error))
+     (:no-error (&rest results)
+       (declare (ignore results))
+       (error "Failed to signal ~A" ',error))))
 
-(test dispatch-run
+(defparameter *test-suite*
+  '(test-if-name
+    test-dispatch-run
+    test-register-service
+    test-register-service-type-error
+    test-registration-conflict-1
+    test-registration-conflict-2
+    test-registration-identical-service-timeout
+    test-enumerate-browse-domains
+    test-enumerate-registration-domains
+    test-browse-timeout
+    test-browse
+    test-resolve
+    test-get-addr-info
+    test-nat-port-mapping-create
+    test-create-connection))
+
+(defun run-tests ()
+  (map nil #'(lambda (test)
+               (format *debug-io*
+                       "~&Running ~A~%" test)
+               (funcall test))
+       *test-suite*)
+  t)
+
+(defun test-if-name ()
+  (let ((interfaces (if-name-index)))
+    (assert (not (null interfaces)))
+    (loop :for (index . name) :in interfaces :do
+          (assert (string-equal name (if-index-to-name index)))
+          (assert (= index (if-name-to-index name))))))
+
+(defun test-presence (result &optional (presence :add))
+  (assert (eq presence
+              (result-property result :presence))))
+
+(defun test-dispatch-run ()
   (when (dispatcher-running-p)
     (dispatcher-stop))
-  (is-false (dispatcher-running-p))
+  (assert (not (dispatcher-running-p)))
   (dispatcher-start)
   (signals error (dispatcher-start))
-  (is (dispatcher-running-p))
+  (assert (dispatcher-running-p))
   (dispatcher-stop)
   (signals warning (dispatcher-stop)))
 
-(test (register-service :depends-on dispatch-run)
+(defun test-register-service ()
   (let* ((operation (register *test-service-port*
                               *test-service-type*))
          (result (operation-next-result operation)))
-    (is (eq (result-property result :presence) :add))
-    (cancel operation)))
-
-(test (register-service-type-error :depends-on dispatch-run)
-  (signals dnssd-error
-    (register *test-service-port* "badtype")))
-
-(test (unknown-property :depends-on register-service)
-  (let* ((operation (register *test-service-port*
-                              *test-service-type*))
-         (result (operation-next-result operation)))
+    (test-presence result)
+    ;; by the way test that properties signal errors when accessing an
+    ;; unknown property.
     (signals error
       (result-property result :unknown-property))
     (cancel operation)))
+
+(defun test-register-service-type-error ()
+  (signals dnssd-error
+    (register *test-service-port* "badtype")))
 
 (defun do-registration-conflict (conflict-error-p)
   ;; 1. register a dummy service, automatically named
@@ -59,7 +92,7 @@
                               :no-auto-rename conflict-error-p))
          (result (operation-next-result operation))
          (registered-name (result-property result :name)))
-    (is (eq (result-property result :presence) :add))
+    (test-presence result)
     ;; 2. register a service with the same name, but on a different
     ;; port for conflict
     (let* ((conflict-operation (register (1+ *test-service-port*)
@@ -67,7 +100,7 @@
                                          :name registered-name
                                          :no-auto-rename t))
            (result (operation-next-result conflict-operation)))
-      (is (eq (result-property result :presence) :add))
+      (test-presence result)
       (if conflict-error-p
           ;; 3a. conflict error: a condition is signaled when getting
           ;; the next result on the first operation.
@@ -76,23 +109,23 @@
         ;; 3b. DNS-SD automatically renames our first service after
         ;; some time, by notifying on the first operation.
         (let ((result (operation-next-result operation)))
-          (is (eq (result-property result :presence) :remove))
+          (assert (eq (result-property result :presence) :remove))
           ;; 4. The service has eventually been renamed, compare
           ;; that the new name is different.
           (let ((result (operation-next-result operation)))
-            (is (eq (result-property result :presence) :add))
-            (is (not (string= registered-name
+            (assert (eq (result-property result :presence) :add))
+            (assert (not (string= registered-name
                               (result-property result :name)))))))
       (cancel conflict-operation))
     (cancel operation)))
 
-(test (registration-conflict-1 :depends-on register-service)
+(defun test-registration-conflict-1 ()
   (do-registration-conflict nil))
 
-(test (registration-conflict-2 :depends-on register-service)
+(defun test-registration-conflict-2 ()
   (do-registration-conflict t))
 
-(test (registration-identical-service-timeout :depends-on register-service)
+(defun test-registration-identical-service-timeout ()
   (let* ((operation (register *test-service-port*
                               *test-service-type*))
          (result (operation-next-result operation))
@@ -109,16 +142,16 @@
       (cancel conflict-operation))
     (cancel operation)))
 
-(test (enumerate-browse-domains :depends-on dispatch-run)
+(defun test-enumerate-browse-domains ()
   (let* ((operation (enumerate-domains :domains :browse-domains))
          (result (operation-next-result operation)))
-    (is (eq :add (result-property result :presence)))
+    (test-presence result)
     (cancel operation)))
 
-(test (enumerate-registration-domains :depends-on dispatch-run)
+(defun test-enumerate-registration-domains ()
   (let* ((operation (enumerate-domains :domains :registration-domains))
          (result (operation-next-result operation)))
-    (is (eq :add (result-property result :presence)))
+    (test-presence result)
     (cancel operation)))
 
 (defun match-service-presence (presence service-name)
@@ -127,13 +160,13 @@
            (string= (result-property result :name)
                     service-name))))
 
-(test (browse-timeout :depends-on register-service)
+(defun test-browse-timeout ()
   (let ((operation (browse "_inexistent_service_type._udp")))
     (signals result-timeout-error
       (operation-next-result operation :timeout +test-timeout+))
     (cancel operation)))
 
-(test (browse :depends-on register-service)
+(defun test-browse ()
   (let* ((operation (register *test-service-port*
                               *test-service-type*
                               :name "Browse Test Service"))
@@ -141,16 +174,14 @@
          (registered-name (result-property result :name))
          (registered-domain (result-property result :domain))
          (registered-type (result-property result :type)))
-    (is (eq (result-property result :presence) :add))
+    (test-presence result)
     (let* ((browse-operation (browse registered-type
                                      :domain registered-domain)))
-      (finishes
-        (operation-next-result-if (match-service-presence :add registered-name)
-                                  browse-operation))
+      (operation-next-result-if (match-service-presence :add registered-name)
+                                browse-operation)
       (cancel operation) ; called with no callback is blocking
-      (finishes
-        (operation-next-result-if (match-service-presence :remove registered-name)
-                                  browse-operation))
+      (operation-next-result-if (match-service-presence :remove registered-name)
+                                browse-operation)
       (cancel browse-operation))))
 
 (defun register-browse-and-resolve (service-name test-function)
@@ -172,36 +203,35 @@
       (cancel browse-operation))
     (cancel register-operation)))
 
-(test (resolve :depends-on browse)
+(defun test-resolve ()
   (register-browse-and-resolve
    "Resolve Test Service"
    #'(lambda (resolve-result)
-       (is (stringp (result-property resolve-result :full-name)))
-       (is (stringp (result-property resolve-result :host)))
-       (is (= *test-service-port*
-              (result-property resolve-result :port))))))
+       (assert (stringp (result-property resolve-result :full-name)))
+       (assert (stringp (result-property resolve-result :host)))
+       (assert (= *test-service-port*
+                  (result-property resolve-result :port))))))
 
-(test (get-addr-info :depends-on resolve)
+(defun test-get-addr-info ()
   (register-browse-and-resolve
    "GetAddrInfo Test Service"
    #'(lambda (resolve-result)
        (let* ((hostname (result-property resolve-result :host))
               (operation (get-addr-info hostname))
               (result (operation-next-result operation)))
-          (is (string= (result-property result :hostname)
-                       hostname))
-          (is (stringp (result-property result :address)))))))
+          (assert (string= (result-property result :hostname)
+                           hostname))
+          (assert (stringp (result-property result :address)))))))
 
-(test (nat-port-mapping-create :depends-on dispatch-run)
+(defun test-nat-port-mapping-create ()
   (let* ((operation (nat-port-mapping-create 0))
          (result (operation-next-result operation)))
-    (is (stringp (result-property result :external-address)))
-    (is (zerop (result-property result :internal-port)))
-    (is (zerop (result-property result :external-port)))
-    (is (zerop (result-property result :ttl)))
+    (assert (stringp (result-property result :external-address)))
+    (assert (zerop (result-property result :internal-port)))
+    (assert (zerop (result-property result :external-port)))
+    (assert (zerop (result-property result :ttl)))
     (cancel operation)))
 
-(test (create-connection :depends-on dispatch-run)
-  (finishes
-    (let ((operation (create-connection)))
-      (cancel operation))))
+(defun test-create-connection ()
+  (let ((operation (create-connection)))
+    (cancel operation)))
