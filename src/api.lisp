@@ -54,20 +54,19 @@
 (defun resolve (name type domain
                 &key callback
                      interface-index
-                     (resolve-on-all-interfaces t)
                      broadcasting)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
-    (dns-service-resolve pointer resolve-on-all-interfaces broadcasting interface-index name type domain)
+    (dns-service-resolve pointer broadcasting interface-index name type domain)
     (dispatch :handle (fli:dereference pointer)
               :callback callback)))
 
 (defun get-addr-info (hostname
                       &key callback
                            interface-index
-                           (protocol :ipv4)
+                           protocols
                            broadcasting)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
-    (dns-service-get-addr-info pointer hostname interface-index protocol broadcasting)
+    (dns-service-get-addr-info pointer hostname interface-index protocols broadcasting)
     (dispatch :handle (fli:dereference pointer)
               :callback callback)))
 
@@ -111,8 +110,6 @@
 
 (defun add-record (operation rrtype rdata
                    &key (ttl 0))
-  (when (operation-canceled-p operation)
-    (error "Cannot add a record with a canceled operation"))
   (fli:with-dynamic-foreign-objects ((pointer record-ref))
     (dns-service-add-record (operation-handle operation)
                             pointer rrtype rdata ttl)
@@ -120,20 +117,15 @@
 
 (defun update-record (operation record-ref rdata
                       &key (ttl 0))
-  (when (operation-canceled-p operation)
-    (error "Cannot add a record with a canceled operation"))
   (dns-service-update-record (operation-handle operation)
                              record-ref rdata ttl))
 
 (defun remove-record (operation record-ref)
-  (when (operation-canceled-p operation)
-    (error "Cannot remove a record with a canceled operation"))
   (dns-service-remove-record (operation-handle operation)
                              record-ref))
 
-(defun reconfirm-record (full-name rrtype rdata
-                         &key interface-index
-                              (rrclass :IN)
+(defun reconfirm-record (full-name rrtype rdata interface-index
+                         &key (rrclass :IN)
                               force)
   (dns-service-reconfirm-record force interface-index full-name rrtype rrclass rdata))
 

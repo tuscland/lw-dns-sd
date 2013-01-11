@@ -1,0 +1,729 @@
+<html> 
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <link rel='stylesheet' type='text/css' href='style.css'>
+  <title>DNS Service Discovery for LispWorks</title>
+</head>
+
+<body>
+
+
+<h1>DNS-SD &mdash; DNS Service Discovery for LispWorks</h1>
+
+<p>This library is a Common Lisp wrapper around the DNS-SD C API.</p>
+
+<p>It is available under the <a
+ href="http://www.apache.org/licenses/LICENSE-2.0">Apache License
+ version 2.0</a>.  The latest version is 1.0.0, released on January
+ 11th, 2013. Feedback and suggestions are welcome, please contact:
+ Camille Troillard &lt;<a
+ href="mailto:ct@wildora.com">ct@wildora.com</a>&gt;.</p>
+
+<p>Download shortcut: <a
+ href="http://www.osculator.net/lisp/dns-sd_1.0.0.zip">http://www.osculator.net/lisp/dns-sd_1.0.0.zip</a>.</p>
+
+
+ <h2><a name="contents">Contents</a></h2>
+<ul>
+  <li><a href="#installation">Installation</a></li>
+  <li><a href="#testing">Testing</a></li>
+  <li><a href="#overview">Overview</a></li>
+  <li><a href="#main-api">Main API</a>
+  <ul>
+    <li><a href="#register"><code>register</code></a></li>
+    <li><a href="#enumerate-domains"><code>enumerate-domains</code></a></li>
+    <li><a href="#browse"><code>browse</code></a></li>
+    <li><a href="#resolve"><code>resolve</code></a></li>
+    <li><a href="#get-addr-info"><code>get-addr-info</code></a></li>
+    <li><a href="#nat-port-mapping-create"><code>nat-port-mapping-create</code></a></li>
+    <li><a href="#query-record"><code>query-record</code></a></li>
+    <li><a href="#add-record"><code>add-record</code></a></li>
+    <li><a href="#update-record"><code>update-record</code></a></li>
+    <li><a href="#remove-record"><code>remove-record</code></a></li>
+    <li><a href="#create-connection"><code>create-connection</code></a></li>
+    <li><a href="#register-record"><code>register-record</code></a></li>
+    <li><a href="#reconfirm-record"><code>reconfirm-record</code></a></li>
+  </ul></li>
+  <li><a href="#operations">Operations</a>
+    <ul>
+      <li><a href="#operation-next-result"><code>operation-next-result</code></a></li>
+      <li><a href="#*default-result-timeout*"><code>*default-result-timeout*</code></a></li>
+      <li><a href="#cancel"><code>cancel</code></a></li>
+      <li><a href="#*default-cancel-timeout*"><code>*default-cancel-timeout*</code></a></li>
+    </ul>
+  </li>
+  <li><a href="#results">Results</a>
+    <ul>
+      <li><a href="#result"><code>result</code></a></li>
+      <li><a href="#error-result"><code>error-result</code></a></li>
+      <li><a href="#error-result-error"><code>error-result-error</code></a></li>
+      <li><a href="#result-more-coming-p"><code>result-more-coming-p</code></a></li>
+      <li><a href="#result-values"><code>result-properties</code></a></li>
+      <li><a href="#result-value"><code>result-property</code></a></li>
+    </ul>
+  </li>
+  <li><a href="#dispatch">Dispatch</a>
+    <ul>
+      <li><a href="#dispatch-running-p"><code>dispatcher-running-p</code></a></li>
+      <li><a href="#start-dispatch"><code>dispatcher-start</code></a></li>
+      <li><a href="#stop-dispatch"><code>dispatcher-stop</code></a></li>
+    </ul>
+  </li>
+  <li><a href="#if-name">Network interface name to index</a>
+    <ul>
+      <li><a href="#if-index-to-name"><code>if-index-to-name</code></a></li>
+      <li><a href="#if-name-index"><code>if-name-index</code></a></li>
+      <li><a href="#if-name-to-index"><code>if-name-to-index</code></a></li>
+    </ul>
+  </li>
+  <li><a href="#errors">Errors</a>
+    <ul>
+      <li><a href="#dns-sd-error"><code>dns-sd-error</code></a></li>
+      <li><a href="#result-error"><code>result-error</code></a></li>
+      <li><a href="#result-error-code"><code>result-error-code</code></a></li>
+      <li><a href="#result-timeout-error"><code>result-timeout-error</code></a></li>
+      <li><a href="#cancel-timeout-error"><code>cancel-timeout-error</code></a></li>
+    </ul>
+  </li>
+  <li><a href="#utility">Utility functions</a>
+    <ul>
+      <li><a href="#build-txt-record"><code>build-txt-record</code></a></li>
+      <li><a href="#parse-txt-record"><code>parse-txt-record</code></a></li>
+      <li><a href="#bytes-to-string"><code>bytes-to-string</code></a></li>
+      <li><a href="#string-to-bytes"><code>string-to-bytes</code></a></li>
+      <li><a href="#construct-full-name"><code>construct-full-name</code></a></li>
+    </ul>
+  </li>
+  </ul>
+  <li><a href="#ack">Acknowledgements</a></li>
+</ul>
+
+
+<h3><a name="installation">Installation</a></h3>
+
+<p>DNS-SD for LispWorks been tested under the following implementations:
+<ul>
+  <li>LispWorks Professional 32 bits for Mac OS X,</li>
+  <li>LispWorks Professional 32 bits for Windows,</li>
+  <li>LispWorks Enterprise 64 bits for Mac OS X.</li>
+</ul></p>
+
+<p>DNS-SD has no dependencies.  Once downloaded, extract the files from
+the zip archive and load the file defsystem.lisp in LispWorks:</p>
+
+<pre class="code">
+CL-USER 1 &gt; <b>(cd "~/lisp/dns-sd")</b>
+<i>#P"/Users/camille/lisp/dns-sd/"</i>
+
+CL-USER 2 &gt; <b>(load "defsystem")</b>
+<i>; Loading text file /Users/camille/lisp/plombier/dns-sd/defsystem.lisp
+;; Looking at system "DNS-SD"
+;; Looking at system "DNS-SD-TESTS"
+#P"/Users/camille/lisp/dns-sd/defsystem.lisp"</i></pre>
+
+<p>You can then use the Editor command "Compile System", the System
+Browser Tool or the Listener to load the DNS-SD system:</p>
+
+<pre class="code">
+CL-USER 3 &gt; <b>(compile-system :dns-sd :load t)</b>
+<i>;; compilation output...</i></pre>
+
+
+<h3><a class=none name="testing">Testing</a></h3>
+
+<p>To run the test suite, load the DNS-SD-TESTS system and call
+<code>(dns-sd-tests:run-tests)</code>:</p>
+
+<pre class="code">
+CL-USER 4 &gt; <b>(compile-system :dns-sd-tests :load t)</b>
+<i>; Loading fasl file /Users/camille/lisp/plombier/dns-sd/src/constants.64xfasl
+(:DNS-SD-TESTS)</i>
+
+CL-USER 5 &gt; <b>(dns-sd-tests:run-tests)</b>
+<i>TEST-IF-NAME
+TEST-DISPATCH-RUN
+TEST-REGISTER-SERVICE
+TEST-REGISTER-SERVICE-TYPE-ERROR
+TEST-REGISTRATION-CONFLICT-1
+TEST-REGISTRATION-CONFLICT-2
+TEST-REGISTRATION-IDENTICAL-SERVICE-TIMEOUT
+TEST-ENUMERATE-BROWSE-DOMAINS
+TEST-ENUMERATE-REGISTRATION-DOMAINS
+TEST-BROWSE-TIMEOUT
+TEST-BROWSE
+TEST-RESOLVE
+TEST-GET-ADDR-INFO
+TEST-NAT-PORT-MAPPING-CREATE
+TEST-CREATE-CONNECTION
+TEST-CONSTRUCT-FULL-NAME
+TEST-TXT-RECORD
+TEST-RECORD-CRUD
+T</i></pre>
+
+<h3><a name="overview">Overview</a></h3>
+
+<p>Using DNS Service Discovery you will be able to:
+<ul>
+  <li>register, browse and resolve for services on the network,</li>
+  <li>get IP addresses for host name in a portable way,</li>
+  <li>create, query, update and remove DNS resource records,</li>
+  <li>create NAT port mappings, or get the NAT's external IP address.</li>
+</ul></p>
+
+<p>Get an introduction on <a href="https://developer.apple.com/library/mac/#documentation/Networking/Conceptual/dns_discovery_api/Introduction.html">DNS Service Discovery</a>.</p>
+
+<p>The C API Reference is an important source of information and <a
+  href="https://developer.apple.com/library/mac/#DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html">can be found here</a>.</p>
+
+
+<h3><a name="main-api">Main API</a></h3>
+
+Functions of the Main API have their counterparts in the DNS-SD C API.
+
+
+<div class='item'>
+  <div class='type'><a name='register'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>register</code>
+    <span class='args'>
+      <var>port</var>
+      <var>type</var>
+      <code class='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>interface-index</var>
+      <var>name</var>
+      <var>domain</var>
+      <var>host</var>
+      <var>txt-record</var>
+      <var>no-auto-rename</var>
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules a service registration operation.  The registration is pending for as long as the operation is not cancelled.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>port</var> specifies the port on which the service accepts connections.  Pass 0 for a "placeholder" service (i.e. a service that will not be discovered by browsing, but will cause a name conflict if another client tries to register that same name).  Most clients will not use placeholder services.</p>
+    <p><var>type</var> is the service type followed by the protocol, separated by a dot (e.g. "_ftp._tcp").  The service type must be an underscore, followed by 1-15 characters, which may be letters, digits, or hyphens.  The transport protocol must be "_tcp" or "_udp".</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to register on all interfaces.</p>
+    <p><var>name</var>, if non-nil, specifies the service name to be registered.  Most applications will not specify a name, in which case the computer name is used (this name is communicated to the client via the callback).</p>
+    <p><var>domain</var>, if non-nil, specifies the domain on which to advertise the service.  Most applications will not specify a domain, instead automatically registering in the default domain(s).</p>
+    <p><var>host</var>, if non-nil, specifies the SRV target host name.  Most applications will not specify a host, instead automatically using the machine's default host name(s).  Note that specifying a non-nil host does NOT create an address record for that host - the application is responsible for ensuring that the appropriate address record exists, or creating it via <a href="#register-record"><tt>register-record</tt></a>.</p>
+    <p><var>txt-record</var> specifies the txt-record associated with the service.  It must be an association-list of key/value strings pairs.</p>
+    <p><var>no-auto-rename</var> specifies renaming behavior on name conflict when registering non-shared records.  By default, name conflicts are automatically handled by renaming the service.  <var>no-auto-rename</var> overrides this behavior &mdash; with this flag set, name conflicts will result in a callback.  The <var>no-auto-rename</var> option is only valid if a name is explicitly specified when registering the service (i.e. the default name, nil, is not used.)</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW16">DNSServiceRegister</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='enumerate-domains'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>enumerate-domains</code>
+    <span class='args'>
+      <code class='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>interface-index</var>
+      <var>domains</var>
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules a domains enumeration operation.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to enumerate domains on all interfaces.</p>
+    <p><var>domains</var> specifies the enumerated domains.  Possible values are <code class='kw'>:BROWSE-DOMAINS</code> (the default value) or <code class='kw'>:REGISTRATION-DOMAINS</code>.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW7">DNSServiceEnumerateDomains</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='browse'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>browse</code>
+    <span class='args'>
+      <var>type</var>
+      <code class='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>interface-index</var>
+      <var>domain</var>
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules a browse operation.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>type</var> is the service type being browsed for followed by the protocol, separated by a dot (e.g. "_ftp._tcp"). The transport protocol must be "_tcp" or "_udp". A client may optionally specify a single subtype to perform filtered browsing: e.g. browsing for "_primarytype._tcp,_subtype" will discover only those instances of "_primarytype._tcp" that were registered specifying "_subtype" in their list of registered subtypes.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to browse on all interfaces.</p>
+    <p><var>domain</var>, if non-nil, specifies the domain on which to advertise the service.  Most applications will not specify a domain, instead automatically registering in the default domain(s).</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW4">DNSServiceBrowse</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='resolve'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>resolve</code>
+    <span class='args'>
+      <var>name</var>
+      <var>type</var>
+      <var>domain</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>interface-index</var>
+      <var>broadcasting</var> 
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules a resolve operation.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>   
+    <p><var>name</var>, <var>type</var> and <var>domain</var> must be specified as the values given by the result of a <a href="#browse"><tt>browse</tt></a> operation.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p><var>interface-index</var> specifies the interface on which to resolve a service. If this <tt>resolve</tt> call is as a result of a currently active <tt>browse</tt> operation, then the <var>interface-index</var> should be the index reported in the result. If this resolve call is using information previously saved (e.g. in a preference file) for later use, then use <var>interface-index</var> nil, because the desired service may now be reachable via a different physical interface.</p>
+    <p>When <var>broadcasting</var> is <code class='kw'>:FORCE-MULTICAST</code> the query is performed with a link-local mDNS query, even if the name is an apparently non-local name (i.e. a name not ending in ".local.").</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW19">DNSServiceResolve</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='get-addr-info'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>get-addr-info</code>
+    <span class='args'>
+      <var>hostname</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>interface-index</var>
+      <var>protocols</var> 
+      <var>broadcasting</var> 
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules an IP address resolution operation.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>   
+    <p><var>hostname</var>, specifies the fully qualified domain name of the host to be queried for, that should be the resulting value of a <a href="#resolve">resolve</a> operation.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p><var>interface-index</var> specifies the interface on which to issue the query.  Passing nil causes the query to be sent on all active interfaces via Multicast or the primary interface via Unicast.</p>
+    <p><var>protocols</var> must be nil or a list of keywords containing <code class='kw'>:IPV4</code> to look up for IPv4 addresses, <code class='kw'>:IPV6</code> to look up for IPv6 addresses, or both keywords.<br />
+    If neither flag is set, the system will apply an intelligent heuristic, which is (currently) that it will attempt to look up both, except: if <var>hostname</var> is a wide-area unicast DNS hostname (i.e. not a ".local." name) but this host has no routable IPv6 address, then the call will not try to look up IPv6 addresses for <var>hostname</var>, since any addresses it found would be unlikely to be of any use anyway.  Similarly, if this host has no routable IPv4 address, the call will not try to look up IPv4 addresses for <var>hostname</var>.</p>
+    <p><var>broadcasting</var> can be <code class='kw'>:FORCE-MULTICAST</code> or <code class='kw'>:LONG-LIVED-QUERY</code>.  Use <code class='kw'>:LONG-LIVED-QUERY</code> to create a "long-lived" unicast query to a unicast DNS server that implements the protocol; this option has no effect on link-local multicast queries.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW8">DNSServiceGetAddrInfo</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='nat-port-mapping-create'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>nat-port-mapping-create</code>
+    <span class='args'>
+      <var>internal-port</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>interface-index</var>
+      <var>external-port</var> 
+      <var>protocols</var> 
+      <var>ttl</var> 
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules a NAT port mapping operation.  The NAT port mapping exists for as long as the operation in pending (i.e. not cancelled).</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>   
+    <p><var>internal-port</var> specifies the port number on the local machine which is listening for packets.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p><var>interface-index</var> specifies the interface on which to create port mappings in a NAT gateway.  Passing 0 causes the port mapping request to be sent on the primary interface.</p>
+    <p><var>external-port</var> specifies the requested external port in the NAT gateway that you would like to map to the internal port.  Pass 0 if you don't care which external port is chosen for you.</p>
+    <p><var>protocols</var> must be nil or a list of keywords containing <code class='kw'>:UDP</code>, <code class='kw'>:TCP</code>, or both keywords.  The local listening port number must also be specified in the <var>internal-port</var> parameter.  To just discover the NAT gateway's external IP address, pass 0 for <var>internal-port</var>, and leave the default value nil for <var>protocols</var>, <var>external-port</var> and <var>ttl</var>.</p>
+    <p><var>ttl</var> specifies the requested renewal period of the NAT port mapping, in seconds.  Most clients should use the default value.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW10">DNSServiceNATPortMappingCreate</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='query-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>query-record</code>
+    <span class='args'>
+      <var>full-name</var>
+      <var>rrtype</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>callback</var> 
+      <var>interface-index</var> 
+      <var>rrclass</var> 
+      <var>broadcasting</var> 
+    </span>
+    <span class='result'>➔ <var>record-ref</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Schedules a query for a record.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>full-name</var> is the full domain name of the resource record to be queried for.  The function <a href="#construct-full-name"><tt>construct-full-name</tt></a> can be used to help format this string.</p>
+    <p><var>rrtype</var> is a keyword representing the type of the record.  Valid keywords are:
+    <tt>:A :NS :MD :MF :CNAME :SOA :MB :MG :MR :NULL :WKS :PTR :HINFO :MINFO :MX :TXT :RP :AFSDB :X25 :ISDN :RT :NSAP :NSAP_PTR :SIG :KEY :PX :GPOS :AAAA :LOC :NXT :EID :NIMLOC :SRV :ATMA :NAPTR :KX :CERT :A6 :DNAME :SINK :OPT :APL :DS :SSHFP :IPSECKEY :RRSIG :NSEC :DNSKEY :DHCID :NSEC3 :NSEC3PARAM :HIP :SPF :UINFO :UID :GID :UNSPEC :TKEY :TSIG :IXFR :AXFR :MAILB :MAILA :ANY</tt>.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p><var>interface-index</var>, if non-nil, specifies the interface on which to issue the query (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.)  Passing nil causes the name to be queried for on all interfaces.</p>
+    <p><var>rrclass</var> has only one value at this moment, <tt>:IN</tt>.</p>
+    <p><var>broadcasting</var> can be <code class='kw'>:FORCE-MULTICAST</code> or <code class='kw'>:LONG-LIVED-QUERY</code>.  Use <code class='kw'>:LONG-LIVED-QUERY</code> to create a "long-lived" unicast query to a unicast DNS server that implements the protocol; this option has no effect on link-local multicast queries.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW12">DNSServiceQueryRecord</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='add-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>add-record</code>
+    <span class='args'>
+      <var>operation</var>
+      <var>rrtype</var>
+      <var>rdata</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>ttl</var> 
+    </span>
+    <span class='result'>➔ <var>record-ref</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Adds a records to a registered service.  The name of the record will be the same as the registered service's name.  The record can later be updated or deregistered by passing the <var>record-ref</var> returned by this function to <a href="#update-record"><tt>update-record</tt></a> or <a href="#remove-record"><tt>remove-record</tt></a>.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>operation</var> must be a running operation returned by a call to <a href="#register"><tt>register</tt></a>.</p>
+    <p><var>rrtype</var> is a keyword representing the type of the record.  Valid keywords are:
+    <tt>:A :NS :MD :MF :CNAME :SOA :MB :MG :MR :NULL :WKS :PTR :HINFO :MINFO :MX :TXT :RP :AFSDB :X25 :ISDN :RT :NSAP :NSAP_PTR :SIG :KEY :PX :GPOS :AAAA :LOC :NXT :EID :NIMLOC :SRV :ATMA :NAPTR :KX :CERT :A6 :DNAME :SINK :OPT :APL :DS :SSHFP :IPSECKEY :RRSIG :NSEC :DNSKEY :DHCID :NSEC3 :NSEC3PARAM :HIP :SPF :UINFO :UID :GID :UNSPEC :TKEY :TSIG :IXFR :AXFR :MAILB :MAILA :ANY</tt>.</p>
+    <p><var>rdata</var> is the raw rdata to be contained in the added resource record.  It must be an array of <tt>(unsigned byte 8)</tt> elements.  The contents of the data depends on the record type.</p>
+    <p><var>ttl</var> specifies the time to live of the resource record, in seconds.  Most clients should pass 0 to indicate that the system should select a sensible default value.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW3">DNSServiceAddRecord</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='update-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>update-record</code>
+    <span class='args'>
+      <var>operation</var>
+      <var>record-ref</var>
+      <var>rdata</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>ttl</var> 
+    </span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Update a registered resource record.  The record must either be:
+    <ul>
+      <li>The primary TXT record of a service registered via <a href="#register"><tt>register</tt></a>,</li>
+      <li>A record added to a registered service  via <a href="#add-record"><tt>add-record</tt></a>,</li>
+      <li>An individual record registered by <a href="#register-record">register-record</a>.</li>
+    </ul></p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>operation</var> must be a running operation returned by a call to <a href="#register"><tt>register</tt></a>, or <a href="#create-connection"><tt>create-connection</tt></a>.</p>
+    <p><var>record-ref</var> may be nil to update the primary TXT record, or the value returned by a call to <a href="#add-record"><tt>add-record</tt></a>, or <a href="#register-record"><tt>register-record</tt></a>.</p>
+    <p><var>rdata</var> is the new raw rdata contained in the updated resource record.  It must be an array of <tt>(unsigned byte 8)</tt> elements.  The contents of the data depends on the record type.</p>
+    <p><var>ttl</var> specifies the time to live of the resource record, in seconds.  Most clients should pass 0 to indicate that the system should select a sensible default value.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW21">DNSServiceUpdateRecord</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='remove-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>remove-record</code>
+    <span class='args'>
+      <var>operation</var>
+      <var>record-ref</var>
+    </span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Remove a record previously added to a service record set via <a href="#add-record"><tt>add-record</tt></a> or <a href="#register-record">register-record</a>.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>operation</var> must be a running operation returned by a call to <a href="#register"><tt>register</tt></a> (if the record being removed was registered via <a href="#add-record"><tt>add-record</tt></a>), or <a href="#create-connection"><tt>create-connection</tt></a> (if the record being removed was registered via <a href="#register-record">register-record</a>).</p>
+    <p><var>record-ref</var> must be the value returned by a call to <a href="#add-record"><tt>add-record</tt></a>, or <a href="#register-record"><tt>register-record</tt></a>.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW18">DNSServiceRemoveRecord</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='create-connection'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>create-connection</code>
+    <span class='args'>
+      <code class ='llkw'>&amp;key</code>
+      <var>callback</var> 
+    </span>
+    <span class='result'>➔ <var>operation</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Create a connection to the daemon allowing efficient registration of multiple individual records.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW6">DNSServiceCreateConnection</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='register-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>register-record</code>
+    <span class='args'>
+      <var>operation</var>
+      <var>full-name</var>
+      <var>rrtype</var>
+      <var>rdata</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>interface-index</var> 
+      <var>rrclass</var>
+      <var>identity</var>
+      <var>ttl</var> 
+    </span>
+    <span class='result'>➔ <var>record-ref</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Register resource records.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>operation</var> must be a running operation returned by a call to <a href="#create-connection"><tt>create-connection</tt></a>.</p>
+    <p><var>full-name</var> specifies the full domain name of the resource record.  The function <a href="#construct-full-name"><tt>construct-full-name</tt></a> can be used to format this string.</p>
+    <p><var>rrtype</var> is a keyword representing the type of the record.  Valid keywords are:
+    <tt>:A :NS :MD :MF :CNAME :SOA :MB :MG :MR :NULL :WKS :PTR :HINFO :MINFO :MX :TXT :RP :AFSDB :X25 :ISDN :RT :NSAP :NSAP_PTR :SIG :KEY :PX :GPOS :AAAA :LOC :NXT :EID :NIMLOC :SRV :ATMA :NAPTR :KX :CERT :A6 :DNAME :SINK :OPT :APL :DS :SSHFP :IPSECKEY :RRSIG :NSEC :DNSKEY :DHCID :NSEC3 :NSEC3PARAM :HIP :SPF :UINFO :UID :GID :UNSPEC :TKEY :TSIG :IXFR :AXFR :MAILB :MAILA :ANY</tt>.</p>
+    <p><var>rdata</var> is the raw rdata to be contained in the registered resource record.  It must be an array of <tt>(unsigned byte 8)</tt> elements.  The contents of the data depends on the record type.</p>
+    <p><var>interface-index</var> if non-nil, specifies the interface on which to register the record (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.)  Passing nil causes the record to be registered on all interfaces.</p>
+    <p><var>rrclass</var> is the class of the resource record, currently supported value is <tt>:IN</tt></p>
+    <p><var>identity</var> when non nil, can have the keyword value <tt>:SHARED</tt> or <tt>:UNIQUE</tt>.  <tt>:SHARED</tt> indicates that there may be multiple records with this name on the network (e.g. PTR records).  <tt>:UNIQUE</tt> indicates that the record's name is to be unique on the network (e.g. SRV records).</p>
+    <p><var>ttl</var> specifies the time to live of the resource record, in seconds.  Most clients should pass 0 to indicate that the system should select a sensible default value.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW17">DNSServiceRegisterRecord</a>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='reconfirm-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>reconfirm-record</code>
+    <span class='args'>
+      <var>full-name</var>
+      <var>rrtype</var>
+      <var>rdata</var>
+      <var>interface-index</var> 
+      <code class ='llkw'>&amp;key</code>
+      <var>rrclass</var>
+      <var>force</var> 
+    </span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Instruct the daemon to verify the validity of a resource record that appears to be out of date (e.g. because TCP connection to a service's target failed.)  Causes the record to be flushed from the daemon's cache (as well as all other daemons' caches on the network) if the record is determined to be invalid. Use this routine conservatively.  Reconfirming a record necessarily consumes network bandwidth, so this should not be done indiscriminately.</p>
+    <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
+    <p><var>full-name</var> specifies the full domain name of the resource record.  The function <a href="#construct-full-name"><tt>construct-full-name</tt></a> can be used to format this string.</p>
+    <p><var>rrtype</var> is a keyword representing the type of the record.  Valid keywords are:
+    <tt>:A :NS :MD :MF :CNAME :SOA :MB :MG :MR :NULL :WKS :PTR :HINFO :MINFO :MX :TXT :RP :AFSDB :X25 :ISDN :RT :NSAP :NSAP_PTR :SIG :KEY :PX :GPOS :AAAA :LOC :NXT :EID :NIMLOC :SRV :ATMA :NAPTR :KX :CERT :A6 :DNAME :SINK :OPT :APL :DS :SSHFP :IPSECKEY :RRSIG :NSEC :DNSKEY :DHCID :NSEC3 :NSEC3PARAM :HIP :SPF :UINFO :UID :GID :UNSPEC :TKEY :TSIG :IXFR :AXFR :MAILB :MAILA :ANY</tt>.</p>
+    <p><var>rdata</var> is the raw rdata of the resource record.  It must be an array of <tt>(unsigned byte 8)</tt> elements.  The contents of the data depends on the record type.</p>
+    <p><var>interface-index</var> specifies the interface of the record in question.  The caller must specify the interface.  This API (by design) causes increased network traffic, so it requires the caller to be precise about which record should be reconfirmed.  It is not possible to pass <tt>+interface-index-any+</tt> for the interface index to perform a "wildcard" reconfirmation, where *all* matching records are reconfirmed.</p>
+    <p><var>rrclass</var> is the class of the resource record, currently supported value is <tt>:IN</tt></p>
+    <p><var>force</var> pass t to force immediate deletion of record, instead of after some number of reconfirmation queries have gone unanswered.</p>
+    <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW13">DNSServiceReconfirmRecord</a>.</p>
+  </blockquote>
+</div>
+
+
+<h3><a name="operations">Operations</a></h3>
+
+<div class='item'>
+  <div class='type'><a name='operation-next-result'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>operation-next-result</code>
+    <span class='args'>
+      <var>operation</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>timeout</var>
+    </span>
+    <span class='result'>➔ <var>result</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Synchronous interface for getting results from a running operation.  Returns a <tt>result</tt> if the call succeed in less that <tt>timeout</tt> seconds, or if the result is an error that occurred within the dispatch loop, signals the <a href="#result-error">result-error</a>.</p>
+    <p><var>operation</var> must be the running operation returned by a function of the <a href="#main-api">Main API</a></p>
+    <p><var>timeout</var> specifies the time in seconds after which the function signals a <a href="#result-timeout-error">result-timeout-error</a>.  If nil is passed, the timeout is infinite (there is no timeout).  Default value is <tt>*default-result-timeout*</tt>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='*default-result-timeout*'>[Special variable]</a></div>
+  <div class='signature'>
+    <code class='name'>*default-result-timeout*</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Default value (60 seconds) for the timeout argument in <a href="#operation-next-result"><tt>operation-next-result</tt></a>.  Nil means no timeout, or infinite wait.  Can be set or dynamically bound to provide another system-wide default value.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='cancel'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>cancel</code>
+    <span class='args'>
+      <var>operation</var>
+      <code class ='llkw'>&amp;key</code>
+      <var>callback</var>
+      <var>timeout</var>
+    </span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Cancel a running operation.</p>
+    <p><var>operation</var> must be a running operation.</p>
+    <p>if <var>callback</var> is nil, the call is synchronous, and <var>operation</var> is canceled after the call has returned.  Otherwise, callback is a function of no argument called from the dispatch process when the operation is canceled, in which case the argument <var>timeout</var> is ignored.</p>
+    <p><var>timeout</var> specifies the time in seconds after which the function signals a <a href="#result-timeout-error">cancel-timeout-error</a>.  If nil is passed, the timeout is infinite (there is no timeout).  Default value is <tt>*default-cancel-timeout*</tt>.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='*default-cancel-timeout*'>[Special variable]</a></div>
+  <div class='signature'>
+    <code class='name'>*default-cancel-timeout*</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Default value (60 seconds) for the timeout argument in <a href="#cancel"><tt>cancel</tt></a>.  Nil means no timeout, or infinite wait.  Can be set or dynamically bound to provide another system-wide default value.</p>
+  </blockquote>
+</div>
+
+
+<h3><a name="results">Results</a></h3>
+
+<div class='item'>
+  <div class='type'><a name='result'>[Class]</a></div>
+  <div class='signature'>
+    <code class='name'>result</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>The base class for all result objects. Results are object delivered asynchronously by <var>operations</var> using callbacks, or returned synchronously by calls to <a href="#operation-next-result"><tt>operation-next-result</tt></a>.  Error result are never returned synchronously, instead they are thown in the current context.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='error-result'>[Class]</a></div>
+  <div class='signature'>
+    <code class='name'>error-result</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Subclass of <a href="#result"><tt>result</tt></a> representing errors occurring on operations during their processing in the dispatch loop.  Error results must be handled by asynchronous callbacks.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='error-result-error'>[Method]</a></div>
+  <div class='signature'>
+    <code class='name'>error-result-error</code>
+    <span class='args'>
+      <var>result</var>
+    </span>
+    <span class='result'>➔ <var>error</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Returns the error captured during the asynchronous processing of an operation in the dispatch loop.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='result-more-coming-p'>[Generic function]</a></div>
+  <div class='signature'>
+    <code class='name'>result-more-coming-p</code>
+    <span class='args'>
+      <var>result</var>
+    </span>
+    <span class='result'>➔ <var>boolean</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Indicates that at least one more result is queued and will be delivered following immediately after this one.  When the <tt>result-more-coming-p</tt> is <tt>t</tt>, applications should not immediately update their UI, because this can result in a great deal of ugly flickering on the screen, and can waste a great deal of CPU time repeatedly updating the screen with content that is then immediately erased, over and over. Applications should wait until <tt>result-more-coming-p</tt> is <tt>nil</tt>, and then update their UI when no more changes are imminent.</p>
+    <p>Error results always return <tt>nil</tt> because no other result can come after.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='result-values'>[Generic function]</a></div>
+  <div class='signature'>
+    <code class='name'>result-values</code>
+    <span class='args'>
+      <var>result</var>
+    </span>
+    <span class='result'>➔ <var>property-list</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Throws an error when used with an <a href="#error-result"><tt>error-result</tt></a>.</p>
+    <p>Returns the property-list of keyword / value pairs representing the values of a previously ran operation.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='result-value'>[Method]</a></div>
+  <div class='signature'>
+    <code class='name'>result-value</code>
+    <span class='args'>
+      <var>result</var>
+      <var>name</var>
+    </span>
+    <span class='result'>➔ <var>value</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Throws an error when the result has no such named value, or if the result is an <a href="#error-result"><tt>error-result</tt></a>.</p>
+    <p>Returns the named value contained in result where <var>name</var> is a keyword.  Valid keywords depend on the result of the operation.</p>
+  </blockquote>
+</div>
+
+
+<h3><a name="Dispatch">Dispatch</a></h3>
+
+<div class='item'>
+  <div class='type'><a name='dispatch-running-p'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>dispatch-running-p</code>
+    <span class='result'>➔ <var>boolean</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Indicates wether the dispatch process is running or not.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='start-dispatch'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>start-dispatch</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Start the dispatch process.  There is generally no need to call this function as it is automatically called by functions of the <a href="#main-api">Main API</a> when the dispatch process is not running.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='stop-dispatch'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>stop-dispatch</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Sycnrhonously stop the dispatch process and cancels every pending operation.</p>
+  </blockquote>
+</div>
+
+</body>
+</html>

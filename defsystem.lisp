@@ -28,7 +28,7 @@
             "result"
             "foreign"
             "operation"
-            "dispatcher"
+            "dispatch"
             "core"
             "api")
   :rules ((:in-order-to :compile :all

@@ -64,7 +64,7 @@
 (defun run-tests ()
   (map nil #'(lambda (test)
                (format *debug-io*
-                       "~&Running ~A~%" test)
+                       "~&~A~%" test)
                (funcall test))
        *test-suite*)
   t)
@@ -78,17 +78,17 @@
 
 (defun test-presence (result &optional (presence :add))
   (assert (eq presence
-              (result-property result :presence))))
+              (result-value result :presence))))
 
 (defun test-dispatch-run ()
-  (when (dispatcher-running-p)
-    (dispatcher-stop))
-  (assert (not (dispatcher-running-p)))
-  (dispatcher-start)
-  (signals error (dispatcher-start))
-  (assert (dispatcher-running-p))
-  (dispatcher-stop)
-  (signals warning (dispatcher-stop)))
+  (when (dispatch-running-p)
+    (stop-dispatch))
+  (assert (not (dispatch-running-p)))
+  (start-dispatch)
+  (signals error (start-dispatch))
+  (assert (dispatch-running-p))
+  (stop-dispatch)
+  (signals warning (stop-dispatch)))
 
 (defun test-register-service ()
   (let* ((operation (register *test-service-port*
@@ -97,7 +97,7 @@
     (test-presence result)
     ;; also test unknown properties.
     (signals error
-      (result-property result :unknown-property))
+      (result-value result :unknown-property))
     (cancel operation)))
 
 (defun test-register-service-type-error ()
@@ -111,7 +111,7 @@
                               :name "Registration Conflict"
                               :no-auto-rename conflict-error-p))
          (result (operation-next-result operation))
-         (registered-name (result-property result :name)))
+         (registered-name (result-value result :name)))
     (test-presence result)
     ;; 2. register a service with the same name, but on a different
     ;; port for conflict
@@ -129,13 +129,13 @@
         ;; 3b. DNS-SD automatically renames our first service after
         ;; some time, by notifying on the first operation.
         (let ((result (operation-next-result operation)))
-          (assert (eq (result-property result :presence) :remove))
+          (assert (eq (result-value result :presence) :remove))
           ;; 4. The service has eventually been renamed, compare
           ;; that the new name is different.
           (let ((result (operation-next-result operation)))
-            (assert (eq (result-property result :presence) :add))
+            (assert (eq (result-value result :presence) :add))
             (assert (not (string= registered-name
-                              (result-property result :name)))))))
+                              (result-value result :name)))))))
       (cancel conflict-operation))
     (cancel operation)))
 
@@ -149,7 +149,7 @@
   (let* ((operation (register *test-service-port*
                               *test-service-type*))
          (result (operation-next-result operation))
-         (registered-name (result-property result :name)))
+         (registered-name (result-value result :name)))
     (let* ((conflict-operation (register *test-service-port*
                                          *test-service-type*
                                          :name registered-name
@@ -176,8 +176,8 @@
 
 (defun match-service-presence (presence service-name)
   #'(lambda (result)
-      (and (eq presence (result-property result :presence))
-           (string= (result-property result :name)
+      (and (eq presence (result-value result :presence))
+           (string= (result-value result :name)
                     service-name))))
 
 (defun test-browse-timeout ()
@@ -191,9 +191,9 @@
                               *test-service-type*
                               :name "Browse Test Service"))
          (result (operation-next-result operation))
-         (registered-name (result-property result :name))
-         (registered-domain (result-property result :domain))
-         (registered-type (result-property result :type)))
+         (registered-name (result-value result :name))
+         (registered-domain (result-value result :domain))
+         (registered-type (result-value result :type)))
     (test-presence result)
     (let* ((browse-operation (browse registered-type
                                      :domain registered-domain)))
@@ -209,14 +209,14 @@
                                        *test-service-type*
                                        :name service-name))
          (register-result (operation-next-result register-operation)))
-    (let* ((browse-operation (browse (result-property register-result :type)
-                                     :domain (result-property register-result :domain)))
+    (let* ((browse-operation (browse (result-value register-result :type)
+                                     :domain (result-value register-result :domain)))
            (browse-result (operation-next-result-if
-                           (match-service-presence :add (result-property register-result :name))
+                           (match-service-presence :add (result-value register-result :name))
                            browse-operation)))
-      (let* ((resolve-operation (resolve (result-property browse-result :name)
-                                         (result-property browse-result :type)
-                                         (result-property browse-result :domain)))
+      (let* ((resolve-operation (resolve (result-value browse-result :name)
+                                         (result-value browse-result :type)
+                                         (result-value browse-result :domain)))
              (resolve-result (operation-next-result resolve-operation)))
         (funcall test-function resolve-result)
         (cancel resolve-operation))
@@ -227,29 +227,29 @@
   (register-browse-and-resolve
    "Resolve Test Service"
    #'(lambda (resolve-result)
-       (assert (stringp (result-property resolve-result :full-name)))
-       (assert (stringp (result-property resolve-result :hostname)))
+       (assert (stringp (result-value resolve-result :full-name)))
+       (assert (stringp (result-value resolve-result :hostname)))
        (assert (= *test-service-port*
-                  (result-property resolve-result :port))))))
+                  (result-value resolve-result :port))))))
 
 (defun test-get-addr-info ()
   (register-browse-and-resolve
    "GetAddrInfo Test Service"
    #'(lambda (resolve-result)
-       (let* ((hostname (result-property resolve-result :hostname))
+       (let* ((hostname (result-value resolve-result :hostname))
               (operation (get-addr-info hostname))
               (result (operation-next-result operation)))
-          (assert (string= (result-property result :hostname)
+          (assert (string= (result-value result :hostname)
                            hostname))
-          (assert (stringp (result-property result :address)))))))
+          (assert (stringp (result-value result :address)))))))
 
 (defun test-nat-port-mapping-create ()
   (let* ((operation (nat-port-mapping-create 0))
          (result (operation-next-result operation)))
-    (assert (stringp (result-property result :external-address)))
-    (assert (zerop (result-property result :internal-port)))
-    (assert (zerop (result-property result :external-port)))
-    (assert (zerop (result-property result :ttl)))
+    (assert (stringp (result-value result :external-address)))
+    (assert (zerop (result-value result :internal-port)))
+    (assert (zerop (result-value result :external-port)))
+    (assert (zerop (result-value result :ttl)))
     (cancel operation)))
 
 (defun test-create-connection ()
@@ -286,7 +286,7 @@
           (let* ((record-data (build-txt-record *test-txt-properties*))
                  (record-ref (add-record operation record-type record-data)))
             (assert record-ref)
-            (let* ((full-name (construct-full-name (result-property result :name)
+            (let* ((full-name (construct-full-name (result-value result :name)
                                                    *test-service-type*
                                                    "local"))
                    (operation (query-record full-name record-type))
@@ -294,14 +294,14 @@
                    ;; empty rdata and the other with our txt-record.
                    (result (operation-next-result-if #'(lambda (result)
                                                          (not (null (parse-txt-record
-                                                          (result-property result :rdata)))))
+                                                          (result-value result :rdata)))))
                                                      operation)))
               (test-presence result)
-              (assert (string= (result-property result :full-name)
+              (assert (string= (result-value result :full-name)
                                full-name))
-              (assert (eq (result-property result :rrtype)
+              (assert (eq (result-value result :rrtype)
                           record-type))
-              (assert (equalp (result-property result :rdata)
+              (assert (equalp (result-value result :rdata)
                               record-data))
               (cancel operation))
             (update-record operation record-ref

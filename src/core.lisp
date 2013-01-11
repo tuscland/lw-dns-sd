@@ -363,11 +363,9 @@
    nil)
   (values))
 
-(defun dns-service-resolve (pointer resolve-on-all-interfaces broadcasting interface-index name type domain)
-  (setf interface-index (if resolve-on-all-interfaces
-                            +interface-index-any+
-                          (or interface-index
-                              +interface-index-any+)))
+(defun dns-service-resolve (pointer broadcasting interface-index name type domain)
+  (setf interface-index (or interface-index
+                              +interface-index-any+))
   (when broadcasting
     (assert (eq broadcasting :force-multicast)))
   (check-type name string)
@@ -384,27 +382,38 @@
    nil)
   (values))
 
-(defun dns-service-get-addr-info (pointer hostname interface-index protocol broadcasting)
+(defvar *protocols-flags*
+  `((:ipv4 . +protocol-ipv4+)
+    (:ipv6 . +protocol-ipv6+)
+    (:tcp . ,+protocol-tcp+)
+    (:udp . ,+protocol-udp+)))
+
+(defun protocols-to-flags (protocols)
+  (loop :with flags := 0
+        :for protocol :in protocols
+        :do (setf flags (logior flags
+                                 (cdr (assoc protocol *protocols-flags*))))
+        :finally (return flags)))
+
+(defun dns-service-get-addr-info (pointer hostname interface-index protocols broadcasting)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
   (check-type hostname string)
-  (assert (member protocol '(:ipv4 :ipv6)))
+  (when protocols
+    (loop :for protocol :in protocols :do
+          (assert (member protocol '(:ipv4 :ipv6)))))
   (when broadcasting
     (assert (member broadcasting
                     '(:force-multicast :long-lived-query))))
-  (let ((protocol-flags (or (when (eq protocol :ipv4)
-                              +protocol-ipv4+)
-                            (when (eq protocol :ipv6)
-                              +protocol-ipv6+))))
-    (%dns-service-get-addr-info
-     pointer
-     (broadcasting-option-to-flag broadcasting)
-     interface-index
-     protocol-flags
-     hostname
-     (make-callback-pointer 'dns-service-get-addr-info-reply)
-     nil))
+  (%dns-service-get-addr-info
+   pointer
+   (broadcasting-option-to-flag broadcasting)
+   interface-index
+   (protocols-to-flags protocols)
+   hostname
+   (make-callback-pointer 'dns-service-get-addr-info-reply)
+   nil)
   (values))
 
 (defun dns-service-query-record (pointer full-name rrtype rrclass interface-index broadcasting)
@@ -425,17 +434,6 @@
    (make-callback-pointer 'dns-service-query-record-reply)
    nil)
   (values))
-
-(defvar *protocols-flags*
-  `((:tcp . ,+protocol-tcp+)
-    (:udp . ,+protocol-udp+)))
-
-(defun protocols-to-flags (protocols)
-  (loop :with flags := 0
-        :for protocol :in protocols
-        :do (setf flags (logior flags
-                                 (cdr (assoc protocol *protocols-flags*))))
-        :finally (return flags)))
 
 (defun dns-service-nat-port-mapping-create (pointer interface-index protocols internal-port external-port ttl)
   (unless interface-index
@@ -458,7 +456,6 @@
   (values))
 
 (defun dns-service-register-record (service-ref pointer identity interface-index full-name rrtype rrclass data ttl)
-  (assert (not (fli:null-pointer-p service-ref)))
   (assert (member identity '(:shared :unique)))
   (unless interface-index
     (setf interface-index +interface-index-any+))
@@ -487,7 +484,6 @@
   (values))
 
 (defun dns-service-add-record (service-ref record-pointer rrtype data ttl)
-  (assert (not (fli:null-pointer-p service-ref)))
   (check-type data (array (unsigned-byte 8)))
   (assert (< (length data) 65536))
   (check-type ttl integer)
@@ -503,7 +499,6 @@
   (values))
 
 (defun dns-service-update-record (service-ref record-ref data ttl)
-  (assert (not (fli:null-pointer-p service-ref)))
   (check-type data (array (unsigned-byte 8)))
   (assert (< (length data) 65536))
   (check-type ttl integer)
@@ -518,7 +513,6 @@
   (values))
 
 (defun dns-service-remove-record (service-ref record-ref)
-  (assert (not (fli:null-pointer-p service-ref)))
   (%dns-service-remove-record
    service-ref
    record-ref
@@ -527,8 +521,7 @@
   (values))
 
 (defun dns-service-reconfirm-record (force interface-index full-name rrtype rrclass data)
-  (unless interface-index
-    (setf interface-index +interface-index-any+))
+  (assert (> interface-index 0))
   (check-type full-name string)
   (check-type data (array (unsigned-byte 8)))
   (assert (< (length data) 65536))
@@ -545,3 +538,4 @@
        (length data)
        data-pointer)))
   (values))
+

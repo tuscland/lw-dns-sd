@@ -25,9 +25,9 @@
 (defclass result ()
   ())
 
-(defgeneric result-property (result property-name)
-  (:method ((result result) (property-name symbol))
-   (error "Result ~A does not have properties" result)))
+(defgeneric result-value (result value-name)
+  (:method ((result result) (value-name symbol))
+   (error "Result ~A does not support named values" result)))
 
 (defgeneric result-more-coming-p (result)
   (:method ((result result))
@@ -38,8 +38,8 @@
    result))
 
 (defclass reply-result (result)
-  ((properties
-    :reader result-properties
+  ((values
+    :reader result-values
     :initform nil
     :initarg :properties)
    (more-coming-p
@@ -47,18 +47,19 @@
     :initform nil
     :initarg :more-coming-p)))
 
-(defmethod result-property ((self reply-result) (property symbol))
+(defmethod result-value ((self reply-result) (name symbol))
   ;; TODO: test property membership properly
-  (unless (member property (result-properties self))
-    (error "Result ~A does have property ~A" self property))
-  (getf (result-properties self)
-        property))
+  (unless (member name (result-values self))
+    (error "Result ~A does have a value named ~A" self name))
+  (getf (result-values self)
+        name))
 
 (defmethod print-object ((self reply-result) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (format stream "MORE-COMING: ~A, ~S"
             (result-more-coming-p self)
-            (result-properties self))))
+            (result-values self))))
+
 
 (defclass error-result (result)
   ((error

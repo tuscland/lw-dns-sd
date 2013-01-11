@@ -22,36 +22,35 @@
 
 (defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)
-(defglobal-variable *cancel-operation-lock* (mp:make-lock :sharing t))
 (defconstant *process-join-timeout* 10)
 
 
-(defun dispatcher-running-p ()
+(defun dispatch-running-p ()
   (mp:process-alive-p *process*))
 
-(defun dispatcher-start ()
-  (when (dispatcher-running-p)
-    (error "DNS-SD Dispatcher is already started."))
+(defun start-dispatch ()
+  (when (dispatch-running-p)
+    (error "DNS-SD Dispatch is already started."))
 
   #+win32 (fli:register-module "dnssd")
   (assert (> (daemon-version) 0))
 
   (setf *process*
-        (mp:process-run-function "DNS-SD Dispatcher"
+        (mp:process-run-function "DNS-SD Dispatch"
                                  '(:mailbox t)
-                                 #'dispatcher-loop))
+                                 #'dispatch-loop))
   (values))
 
-(defun dispatcher-stop ()
-  (if (dispatcher-running-p)
+(defun stop-dispatch ()
+  (if (dispatch-running-p)
       (progn
-        (dispatcher-send #'(lambda ()
-                             (mp:process-kill
-                              (mp:get-current-process))))
+        (dispatch-send #'(lambda ()
+                           (mp:process-kill
+                            (mp:get-current-process))))
         (mp:process-join *process*
                          :timeout *process-join-timeout*)
         (setf *process* nil))
-    (warn "DNS-SD Dispatcher not running"))  
+    (warn "DNS-SD Dispatch not running"))  
   (values))
 
 (defun %add-operation (operation)
@@ -68,16 +67,16 @@
   (dolist (operation (copy-seq *operations*))
     (%remove-operation operation)))
 
-(defun dispatcher-wait-reason ()
+(defun dispatch-wait-reason ()
   (format nil "Waiting, ~[no~:;~:*~D~] pending operation~:P"
           (length *operations*)))
 
-(defun dispatcher-loop ()
-  (mp:ensure-process-cleanup `%cleanup)
+(defun dispatch-loop ()
+  (mp:ensure-process-cleanup '%cleanup)
   (loop :with mailbox := (mp:process-mailbox (mp:get-current-process))
         :for operation := (sys:wait-for-input-streams-returning-first
                            *operations*
-                           :wait-reason (dispatcher-wait-reason)
+                           :wait-reason (dispatch-wait-reason)
                            :wait-function #'(lambda ()
                                               #+lispworks6.1 (mp:mailbox-not-empty-p mailbox)
                                               #-lispworks6.1 (mp:mailbox-peek mailbox)))
@@ -90,19 +89,19 @@
                 (mp:process-all-events)))
         :while t))
 
-(defun dispatcher-send (form)
-  (when (not (dispatcher-running-p))
-    (dispatcher-start))
+(defun dispatch-send (form)
+  (when (not (dispatch-running-p))
+    (start-dispatch))
   (mp:process-send *process* form)
   (mp:process-poke *process*))
 
-(defun dispatcher-add-operation (operation)
-  (dispatcher-send
+(defun dispatch-add-operation (operation)
+  (dispatch-send
    `(%add-operation ,operation))
   operation)
 
-(defun dispatcher-remove-operation (operation removal-callback)
-  (dispatcher-send
+(defun dispatch-remove-operation (operation removal-callback)
+  (dispatch-send
    `(%remove-operation ,operation ,removal-callback)))
 
 
@@ -119,10 +118,10 @@
                &key callback
                     (timeout *default-cancel-timeout*))
   (let (finished-waiting)
-    (dispatcher-remove-operation operation
-                                 (or callback
-                                     #'(lambda ()
-                                         (setf finished-waiting t))))
+    (dispatch-remove-operation operation
+                               (or callback
+                                   #'(lambda ()
+                                       (setf finished-waiting t))))
     (when (not (null callback))
       (unless (mp:process-wait-with-timeout "Waiting for operation to be canceled."
                                             timeout
@@ -132,6 +131,6 @@
   (values))
 
 (defun dispatch (&rest operation-initargs)
-  (dispatcher-add-operation
+  (dispatch-add-operation
    (apply #'make-instance 'operation
           operation-initargs)))

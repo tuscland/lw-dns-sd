@@ -21,10 +21,16 @@
 (defpackage #:com.wildora.dns-sd
   (:nicknames #:dns-sd)
   (:export
+   *library-version*
+
    ;; Network interface name to index
    #:if-name-to-index
    #:if-index-to-name
    #:if-name-index
+   #:+interface-index-any+
+   #:+interface-index-local-only+
+   #:+interface-index-unicast+
+   #:+interface-index-p2p+
 
    ;; Record data handling
    #:string-to-bytes
@@ -42,27 +48,24 @@
 
    ;; Results
    #:result
-   #:result-properties
-   #:result-property
-   #:result-property-error
+   #:result-values
+   #:result-value
    #:result-more-coming-p
    #:error-result
    #:error-result-error
 
    ;; Operations
-   #:operation
-   #:operation-canceled-p
    #:operation-next-result
    #:*default-result-timeout*
    #:result-timeout-error
-
-   ;; Event queue
-   #:dispatcher-start
-   #:dispatcher-stop
-   #:dispatcher-running-p
    #:cancel
    #:*default-cancel-timeout*
    #:cancel-timeout-error
+
+   ;; Dispatch
+   #:start-dispatch
+   #:stop-dispatch
+   #:dispatch-running-p
 
    ;; Main API
    #:register
