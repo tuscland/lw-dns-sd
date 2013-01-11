@@ -20,22 +20,18 @@
 
 (in-package #:com.wildora.dns-sd)
 
+#+win32
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defconstant IFNAMSIZ 16)
+  (fli:register-module "iphlpapi"))
 
-  #+win32
-  (fli:register-module "Iphlpapi"))
-
-(fli:define-foreign-function (if-name-to-index "if_nametoindex" :source)
+(fli:define-foreign-function (if-name-to-index "if_nametoindex")
     ((name (:reference-pass (:ef-mb-string :limit IFNAMSIZ))))
-  :result-type (:unsigned :int)
-  :language :ansi-c)
+  :result-type (:unsigned :int))
 
-(fli:define-foreign-function (%if-index-to-name "if_indextoname" :source)
+(fli:define-foreign-function (%if-index-to-name "if_indextoname")
     ((index (:unsigned :int))
      (name  :pointer))
-  :result-type :pointer
-  :language :ansi-c)
+  :result-type :pointer)
 
 (defun if-index-to-name (index)
   (fli:with-dynamic-foreign-objects ((name (:ef-mb-string :limit IFNAMSIZ)))
@@ -43,21 +39,23 @@
       (unless (fli:pointer-eq result fli:*null-pointer*)
         (fli:convert-from-foreign-string name)))))
 
+#-win32
 (fli:define-c-struct (if-nameindex
                       (:foreign-name "if_nameindex"))
   (index (:unsigned :int))
   (name (:pointer :char)))
 
-(fli:define-foreign-function (%if-nameindex "if_nameindex" :source)
+#-win32
+(fli:define-foreign-function (%if-nameindex "if_nameindex")
     ()
-  :result-type (:ptr (:struct if-nameindex))
-  :language :ansi-c)
+  :result-type (:ptr (:struct if-nameindex)))
 
-(fli:define-foreign-function (%if-freenameindex "if_freenameindex" :source)
+#-win32
+(fli:define-foreign-function (%if-freenameindex "if_freenameindex")
     ((ptr (:pointer (:struct if-nameindex))))
-  :result-type :void
-  :language :ansi-c)
+  :result-type :void)
 
+#-win32
 (defun if-name-index ()
   (let ((result (%if-nameindex)))
     (unless (fli:null-pointer-p result)
@@ -69,3 +67,20 @@
                             (fli:foreign-slot-value nameindex 'name)))
             :do (fli:incf-pointer nameindex)
             :finally (%if-freenameindex result)))))
+
+#+win32
+(fli:define-foreign-function (%get-number-of-interfaces "GetNumberOfInterfaces")
+    ((ptr (:pointer win32:dword)))
+  :result-type win32:dword)
+
+#+win32
+(defun get-number-of-interfaces ()
+  (fli:with-dynamic-foreign-objects ((ptr win32:dword))
+    (%get-number-of-interfaces ptr)
+    (fli:dereference ptr)))
+
+#+win32
+(defun if-name-index ()
+  (loop :for index :from 1 :to (get-number-of-interfaces)
+        :collect (cons index
+                       (if-index-to-name index))))
