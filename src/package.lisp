@@ -1,32 +1,70 @@
-;;;; package.lisp
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
-(defpackage #:com.wildora.dnssd
-  (:nicknames #:dnssd)
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+
+(require "comm")
+
+(defpackage #:com.wildora.dns-sd
+  (:nicknames #:dns-sd)
   (:export
+   ;; Network interface name to index
    #:if-name-to-index
    #:if-index-to-name
    #:if-name-index
 
-   #:dnssd-error
+   ;; Record data handling
+   #:string-to-bytes
+   #:bytes-to-string
+   #:build-txt-record
+   #:parse-txt-record
+
+   ;; Utility
+   #:construct-full-name
+
+   ;; Errors
+   #:dns-sd-error
    #:result-error
    #:result-error-code
 
+   ;; Results
    #:result
    #:result-properties
    #:result-property
    #:result-property-error
    #:result-more-coming-p
+   #:error-result
+   #:error-result-error
 
+   ;; Operations
    #:operation
    #:operation-canceled-p
    #:operation-next-result
    #:*default-result-timeout*
    #:result-timeout-error
 
+   ;; Event queue
+   #:dispatcher-start
+   #:dispatcher-stop
+   #:dispatcher-running-p
    #:cancel
    #:*default-cancel-timeout*
    #:cancel-timeout-error
-   #:create-connection
+
+   ;; Main API
    #:register
    #:enumerate-domains
    #:browse
@@ -40,18 +78,8 @@
    #:remove-record
    #:register-record
    #:reconfirm-record
-   
-   #:construct-full-name
-   #:string-to-bytes
-   #:bytes-to-string
+   #:create-connection))
 
-   #:dispatcher-start
-   #:dispatcher-stop
-   #:dispatcher-running-p
-
-   #:build-txt-record
-   #:parse-txt-record))
-
-(defpackage #:com.wildora.dnssd-user
-  (:nicknames #:dnssd-user)
-  (:use #:cl #:dnssd))
+(defpackage #:com.wildora.dns-sd-user
+  (:nicknames #:dns-sd-user)
+  (:use #:cl #:dns-sd))

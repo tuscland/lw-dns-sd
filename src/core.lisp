@@ -1,4 +1,24 @@
-(in-package #:com.wildora.dnssd)
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; High-level implementation of foreign language interfaces.
+
+
+(in-package #:com.wildora.dns-sd)
 
 ;;;;
 ;;;; Foreign array support
@@ -72,9 +92,9 @@
     ((sdref service-ref)
      (flags flags-t)
      (error-code error-t)
-     (name (:reference-return dnssd-string :allow-null t))
-     (type (:reference-return dnssd-string :allow-null t))
-     (domain (:reference-return dnssd-string :allow-null t))
+     (name (:reference-return dns-sd-string :allow-null t))
+     (type (:reference-return dns-sd-string :allow-null t))
+     (domain (:reference-return dns-sd-string :allow-null t))
      (context (:pointer :void)))
   (declare (ignore sdref context))
   (reply error-code
@@ -90,7 +110,7 @@
      (flags flags-t)
      (interface-index :uint32)
      (error-code error-t)
-     (domain (:reference-return dnssd-string :allow-null t))
+     (domain (:reference-return dns-sd-string :allow-null t))
      (context (:pointer :void)))
   (declare (ignore sdref context))
   (reply error-code 
@@ -106,9 +126,9 @@
      (flags flags-t)
      (interface-index :uint32)
      (error-code error-t)
-     (name (:reference-return dnssd-string :allow-null t))
-     (type (:reference-return dnssd-string :allow-null t))
-     (domain (:reference-return dnssd-string))
+     (name (:reference-return dns-sd-string :allow-null t))
+     (type (:reference-return dns-sd-string :allow-null t))
+     (domain (:reference-return dns-sd-string))
      (context (:pointer :void)))
   (declare (ignore sdref context))
   (reply error-code
@@ -125,8 +145,8 @@
      (flags flags-t)
      (interface-index :uint32)
      (error-code error-t)
-     (full-name (:reference-return dnssd-string :allow-null t))
-     (host (:reference-return dnssd-string :allow-null t))
+     (full-name (:reference-return dns-sd-string :allow-null t))
+     (host (:reference-return dns-sd-string :allow-null t))
      (port :uint16)
      (txt-record-size :uint16)
      (txt-record-bytes (:pointer (:unsigned :char)))
@@ -139,7 +159,7 @@
            (flags-more-coming-p flags)
            :interface-index interface-index
            :full-name full-name
-           :host host
+           :hostname host
            :port (ntohs port)
            :txt-record txt-record)))
 
@@ -149,7 +169,7 @@
      (flags flags-t)
      (interface-index :uint32)
      (error-code error-t)
-     (hostname (:reference-return dnssd-string :allow-null t))
+     (hostname (:reference-return dns-sd-string :allow-null t))
      (addr (:const (:pointer (:struct sockaddr))))
      (ttl :uint32)
      (context (:pointer :void)))
@@ -170,7 +190,7 @@
      (flags flags-t)
      (interface-index :uint32)
      (error-code error-t)
-     (full-name (:reference-return dnssd-string))
+     (full-name (:reference-return dns-sd-string))
      (rrtype :uint16)
      (rrclass :uint16)
      (rdlen :uint16)
@@ -184,8 +204,8 @@
            :presence (flags-get-presence flags)
            :interface-index interface-index
            :full-name full-name
-           :rrtype rrtype
-           :rrclass rrclass
+           :rrtype (rrtype-to-keyword rrtype)
+           :rrclass (rrclass-to-keyword rrclass)
            :rdata data
            :ttl ttl)))
 
@@ -254,6 +274,12 @@
 (defconstant +max-domain-name-length+ 1009)
 (defconstant +max-service-name-length+ 64)
 
+(defun construct-full-name (service type domain)
+  (fli:with-dynamic-foreign-objects ((buffer :char
+                                      :nelems +max-domain-name-length+))
+    (dns-service-construct-full-name buffer service type domain)
+    (fli:convert-from-foreign-string buffer)))
+
 ;;;;
 ;;;; Keyword options to flags translation
 ;;;;
@@ -285,7 +311,8 @@
   (when (and no-auto-rename
              (null name))
     (error "NO-AUTO-RENAME cannot be specified in conjunction with the default (nil) service NAME."))
-  (assert (< (length txt-record) 65536))
+  ;; see section 6.1 of http://files.dns-sd.org/draft-cheshire-dnsext-dns-sd.txt
+  (assert (< (length txt-record) 8900))
   (unless txt-record
     (setf txt-record (build-txt-record nil)))
   (let ((flags (if no-auto-rename
@@ -380,10 +407,8 @@
      nil))
   (values))
 
-(defun dns-service-query-record (pointer full-name type class interface-index broadcasting)
+(defun dns-service-query-record (pointer full-name rrtype rrclass interface-index broadcasting)
   (check-type full-name string)
-  (check-type type integer)
-  (check-type class integer)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type interface-index (integer 0))
@@ -395,8 +420,8 @@
    (broadcasting-option-to-flag broadcasting)
    interface-index
    full-name
-   type
-   class
+   (keyword-to-rrtype rrtype)
+   (keyword-to-rrclass rrclass)
    (make-callback-pointer 'dns-service-query-record-reply)
    nil)
   (values))
@@ -432,14 +457,12 @@
    nil)
   (values))
 
-(defun dns-service-register-record (service-ref pointer identity interface-index full-name type class data ttl)
+(defun dns-service-register-record (service-ref pointer identity interface-index full-name rrtype rrclass data ttl)
   (assert (not (fli:null-pointer-p service-ref)))
   (assert (member identity '(:shared :unique)))
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type full-name string)
-  (check-type type integer)
-  (check-type class integer)
   (check-type data (array (unsigned-byte 8)))
   (assert (< (length data) 65536))
   (check-type ttl integer)
@@ -454,8 +477,8 @@
        flags
        interface-index
        full-name
-       type
-       class
+       (keyword-to-rrtype rrtype)
+       (keyword-to-rrclass rrclass)
        (length data)
        data-pointer
        ttl
@@ -463,9 +486,8 @@
        nil)))
   (values))
 
-(defun dns-service-add-record (service-ref record-pointer type data ttl)
+(defun dns-service-add-record (service-ref record-pointer rrtype data ttl)
   (assert (not (fli:null-pointer-p service-ref)))
-  (check-type type integer)
   (check-type data (array (unsigned-byte 8)))
   (assert (< (length data) 65536))
   (check-type ttl integer)
@@ -474,7 +496,7 @@
      service-ref
      record-pointer
      0
-     type
+     (keyword-to-rrtype rrtype)
      (length data)
      data-pointer
      ttl))
@@ -504,12 +526,10 @@
   (setf (fli:pointer-address record-ref) 0)
   (values))
 
-(defun dns-service-reconfirm-record (force interface-index full-name type class data)
+(defun dns-service-reconfirm-record (force interface-index full-name rrtype rrclass data)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (check-type full-name string)
-  (check-type type integer)
-  (check-type class integer)
   (check-type data (array (unsigned-byte 8)))
   (assert (< (length data) 65536))
   (let ((flags (if force
@@ -520,8 +540,8 @@
        flags
        interface-index
        full-name
-       type
-       class
+       (keyword-to-rrtype rrtype)
+       (keyword-to-rrclass rrclass)
        (length data)
        data-pointer)))
   (values))

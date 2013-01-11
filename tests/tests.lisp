@@ -1,6 +1,24 @@
-;;;; -*- mode: Lisp; syntax: ANSI-Common-Lisp; indent-tabs-mode: nil -*-
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
-(in-package #:com.wildora.dnssd-tests)
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; Test suite for the DNS-SD system.
+
+
+(in-package #:com.wildora.dns-sd-tests)
 
 (defparameter *test-service-type* "_test._udp")
 (defparameter *test-service-port* 9999)
@@ -77,14 +95,13 @@
                               *test-service-type*))
          (result (operation-next-result operation)))
     (test-presence result)
-    ;; by the way test that properties signal errors when accessing an
-    ;; unknown property.
+    ;; also test unknown properties.
     (signals error
       (result-property result :unknown-property))
     (cancel operation)))
 
 (defun test-register-service-type-error ()
-  (signals dnssd-error
+  (signals dns-sd-error
     (register *test-service-port* "badtype")))
 
 (defun do-registration-conflict (conflict-error-p)
@@ -107,7 +124,7 @@
       (if conflict-error-p
           ;; 3a. conflict error: a condition is signaled when getting
           ;; the next result on the first operation.
-          (signals dnssd-error
+          (signals dns-sd-error
             (operation-next-result operation))
         ;; 3b. DNS-SD automatically renames our first service after
         ;; some time, by notifying on the first operation.
@@ -211,7 +228,7 @@
    "Resolve Test Service"
    #'(lambda (resolve-result)
        (assert (stringp (result-property resolve-result :full-name)))
-       (assert (stringp (result-property resolve-result :host)))
+       (assert (stringp (result-property resolve-result :hostname)))
        (assert (= *test-service-port*
                   (result-property resolve-result :port))))))
 
@@ -219,7 +236,7 @@
   (register-browse-and-resolve
    "GetAddrInfo Test Service"
    #'(lambda (resolve-result)
-       (let* ((hostname (result-property resolve-result :host))
+       (let* ((hostname (result-property resolve-result :hostname))
               (operation (get-addr-info hostname))
               (result (operation-next-result operation)))
           (assert (string= (result-property result :hostname)
@@ -259,8 +276,7 @@
                     properties))))
 
 (defun test-record-crud ()
-  (let* ((record-type dnssd::+service-type-txt+)
-         (record-class dnssd::+service-class-in+)
+  (let* ((record-type :TXT)
          (operation (register *test-service-port*
                               *test-service-type*))
          (result (operation-next-result operation)))
@@ -273,10 +289,9 @@
             (let* ((full-name (construct-full-name (result-property result :name)
                                                    *test-service-type*
                                                    "local"))
-                   (operation (query-record full-name record-type record-class))
-                   ;; For some reason DNS-SD returns two results, one
-                   ;; with empty rdata and the other with our
-                   ;; txt-record.
+                   (operation (query-record full-name record-type))
+                   ;; DNS-SD will return two results here, one with
+                   ;; empty rdata and the other with our txt-record.
                    (result (operation-next-result-if #'(lambda (result)
                                                          (not (null (parse-txt-record
                                                           (result-property result :rdata)))))
@@ -284,10 +299,8 @@
               (test-presence result)
               (assert (string= (result-property result :full-name)
                                full-name))
-              (assert (= (result-property result :rrtype)
-                         record-type))
-              (assert (= (result-property result :rrclass)
-                         record-class))
+              (assert (eq (result-property result :rrtype)
+                          record-type))
               (assert (equalp (result-property result :rdata)
                               record-data))
               (cancel operation))

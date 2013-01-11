@@ -1,4 +1,24 @@
-(in-package #:com.wildora.dnssd)
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; Event queue specialized for DNS-SD events.
+
+
+(in-package #:com.wildora.dns-sd)
 
 (defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)
@@ -11,13 +31,13 @@
 
 (defun dispatcher-start ()
   (when (dispatcher-running-p)
-    (error "DNSSD Dispatcher is already started."))
+    (error "DNS-SD Dispatcher is already started."))
 
   #+win32 (fli:register-module "dnssd")
   (assert (> (daemon-version) 0))
 
   (setf *process*
-        (mp:process-run-function "DNSSD Dispatcher"
+        (mp:process-run-function "DNS-SD Dispatcher"
                                  '(:mailbox t)
                                  #'dispatcher-loop))
   (values))
@@ -31,7 +51,7 @@
         (mp:process-join *process*
                          :timeout *process-join-timeout*)
         (setf *process* nil))
-    (warn "DNSSD Dispatcher not running"))  
+    (warn "DNS-SD Dispatcher not running"))  
   (values))
 
 (defun %add-operation (operation)
@@ -90,7 +110,7 @@
 ;;;; Public interface
 ;;;;
 
-(define-condition cancel-timeout-error (dnssd-error)
+(define-condition cancel-timeout-error (dns-sd-error)
   ())
 
 (defparameter *default-cancel-timeout* 60)

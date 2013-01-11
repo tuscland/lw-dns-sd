@@ -1,4 +1,24 @@
-(in-package #:com.wildora.dnssd)
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; Low-level foreign language interface.
+
+
+(in-package #:com.wildora.dns-sd)
 
 (fli:define-c-typedef service-ref
   :pointer)
@@ -6,7 +26,7 @@
 (fli:define-c-typedef record-ref
   :pointer)
 
-(fli:define-foreign-type dnssd-string ()
+(fli:define-foreign-type dns-sd-string ()
   `(:ef-mb-string
     :null-terminated-p t
     :external-format :utf-8))
@@ -59,18 +79,16 @@
         (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr)))))))
 
 (fli:define-foreign-function (dns-service-deallocate
-                              "DNSServiceRefDeallocate" :source)
+                              "DNSServiceRefDeallocate")
     ((sdref service-ref))
-  :result-type :void
-  :language :ansi-c)
+  :result-type :void)
 
 (fli:define-foreign-function (dns-service-sockfd
-                              "DNSServiceRefSockFD" :source)
+                              "DNSServiceRefSockFD")
     ((sdref service-ref))
-  :result-type :int
-  :language :ansi-c)
+  :result-type :int)
 
-(defmacro define-dnssd-function ((name external-name) args)
+(defmacro define-dns-sd-function ((name external-name) args)
   "Declares a foreign function that returns a value of type
 DNSServiceErrorType and defines a wrapper around the foreign function
 that raises an error of type RESULT-ERROR if the foreign function
@@ -86,94 +104,94 @@ returns a value indicating that an error occurred."
          (let ((,result (,unwrapped-name ,@arg-names)))
            (maybe-signal-result-error ,result))))))
 
-(define-dnssd-function (dns-service-get-property
-                        "DNSServiceGetProperty")
-  ((property (:reference-pass dnssd-string))
+(define-dns-sd-function (dns-service-get-property
+                         "DNSServiceGetProperty")
+  ((property (:reference-pass dns-sd-string))
    (result (:pointer :void))
    (size (:pointer :uint32))))
 
-(define-dnssd-function (dns-service-process-result
-                        "DNSServiceProcessResult")
+(define-dns-sd-function (dns-service-process-result
+                         "DNSServiceProcessResult")
   ((sdref service-ref)))
 
-(define-dnssd-function (dns-service-construct-full-name
-                        "DNSServiceConstructFullName")
+(define-dns-sd-function (dns-service-construct-full-name
+                         "DNSServiceConstructFullName")
   ((full-name (:pointer :char))
-   (service (:reference-pass dnssd-string :allow-null t))
-   (type (:reference-pass dnssd-string))
-   (domain (:reference-pass dnssd-string))))
+   (service (:reference-pass dns-sd-string :allow-null t))
+   (type (:reference-pass dns-sd-string))
+   (domain (:reference-pass dns-sd-string))))
 
 ;;;;
 ;;;; Low level versions of operations functions
 ;;;;
 
-(define-dnssd-function (%dns-service-register
-                        "DNSServiceRegister")
+(define-dns-sd-function (%dns-service-register
+                         "DNSServiceRegister")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
-   (name (:reference-pass dnssd-string :allow-null t))
-   (type (:reference-pass dnssd-string))
-   (domain (:reference-pass dnssd-string :allow-null t))
-   (host (:reference-pass dnssd-string :allow-null t))
+   (name (:reference-pass dns-sd-string :allow-null t))
+   (type (:reference-pass dns-sd-string))
+   (domain (:reference-pass dns-sd-string :allow-null t))
+   (host (:reference-pass dns-sd-string :allow-null t))
    (port :uint16)
    (txtlen :uint16)
    (txtrecord (:const (:pointer :void)))
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-enumerate-domains
-                        "DNSServiceEnumerateDomains")
+(define-dns-sd-function (%dns-service-enumerate-domains
+                         "DNSServiceEnumerateDomains")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-browse
-                        "DNSServiceBrowse")
+(define-dns-sd-function (%dns-service-browse
+                         "DNSServiceBrowse")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
-   (type (:reference-pass dnssd-string))
-   (domain (:reference-pass dnssd-string :allow-null t))
+   (type (:reference-pass dns-sd-string))
+   (domain (:reference-pass dns-sd-string :allow-null t))
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-resolve
-                        "DNSServiceResolve")
+(define-dns-sd-function (%dns-service-resolve
+                         "DNSServiceResolve")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
-   (name (:reference-pass dnssd-string))
-   (type (:reference-pass dnssd-string))
-   (domain (:reference-pass dnssd-string :allow-null t))
+   (name (:reference-pass dns-sd-string))
+   (type (:reference-pass dns-sd-string))
+   (domain (:reference-pass dns-sd-string :allow-null t))
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-get-addr-info
-                        "DNSServiceGetAddrInfo")
+(define-dns-sd-function (%dns-service-get-addr-info
+                         "DNSServiceGetAddrInfo")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
    (protocol protocol-t)
-   (hostname (:reference-pass dnssd-string))
+   (hostname (:reference-pass dns-sd-string))
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-query-record
-                        "DNSServiceQueryRecord")
+(define-dns-sd-function (%dns-service-query-record
+                         "DNSServiceQueryRecord")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
-   (full-name (:reference-pass dnssd-string))
+   (full-name (:reference-pass dns-sd-string))
    (rrtype :uint16)
    (rrclass :uint16)
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-nat-port-mapping-create
-                        "DNSServiceNATPortMappingCreate")
+(define-dns-sd-function (%dns-service-nat-port-mapping-create
+                         "DNSServiceNATPortMappingCreate")
   ((sdref (:pointer service-ref))
    (flags flags-t)
    (interface-index :uint32)
@@ -184,13 +202,13 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dnssd-function (%dns-service-register-record
-                        "DNSServiceRegisterRecord")
+(define-dns-sd-function (%dns-service-register-record
+                         "DNSServiceRegisterRecord")
   ((sdref service-ref)
    (rdref (:pointer record-ref))
    (flags flags-t)
    (interface-index :uint32)
-   (full-name (:reference-pass dnssd-string))
+   (full-name (:reference-pass dns-sd-string))
    (rrtype :uint16)
    (rrclass :uint16)
    (rdlen :uint16)
@@ -200,12 +218,12 @@ returns a value indicating that an error occurred."
    (context (:pointer :void))))
 
 
-(define-dnssd-function (dns-service-create-connection
-                        "DNSServiceCreateConnection")
+(define-dns-sd-function (dns-service-create-connection
+                         "DNSServiceCreateConnection")
   ((sdref (:pointer service-ref))))
 
-(define-dnssd-function (%dns-service-add-record
-                        "DNSServiceAddRecord")
+(define-dns-sd-function (%dns-service-add-record
+                         "DNSServiceAddRecord")
   ((sdref service-ref)
    (rdref (:pointer record-ref))
    (flags flags-t)
@@ -214,8 +232,8 @@ returns a value indicating that an error occurred."
    (rdata (:pointer :void))
    (ttl :uint32)))
 
-(define-dnssd-function (%dns-service-update-record
-                        "DNSServiceUpdateRecord")
+(define-dns-sd-function (%dns-service-update-record
+                         "DNSServiceUpdateRecord")
   ((sdref service-ref)
    (rdref record-ref)
    (flags flags-t)
@@ -223,17 +241,17 @@ returns a value indicating that an error occurred."
    (data (:const (:pointer :void)))
    (ttl :uint32)))
 
-(define-dnssd-function (%dns-service-remove-record
-                        "DNSServiceRemoveRecord")
+(define-dns-sd-function (%dns-service-remove-record
+                         "DNSServiceRemoveRecord")
   ((sdref service-ref)
    (rdref record-ref)
    (flags flags-t)))
 
-(define-dnssd-function (%dns-service-reconfirm-record
-                        "DNSServiceReconfirmRecord")
+(define-dns-sd-function (%dns-service-reconfirm-record
+                         "DNSServiceReconfirmRecord")
   ((flags flags-t)
    (interface-index :uint32)
-   (full-name (:reference-pass dnssd-string))
+   (full-name (:reference-pass dns-sd-string))
    (type :uint16)
    (class :uint16)
    (rdlen :uint16)

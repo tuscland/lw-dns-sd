@@ -1,8 +1,25 @@
-(in-package #:com.wildora.dnssd)
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
-;;;;
-;;;; Main API
-;;;;
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; Main public API.
+
+
+(in-package #:com.wildora.dns-sd)
+
 
 (defun register (port type
                  &key callback
@@ -54,9 +71,10 @@
     (dispatch :handle (fli:dereference pointer)
               :callback callback)))
 
-(defun query-record (full-name rrtype rrclass
+(defun query-record (full-name rrtype
                      &key callback
                           interface-index
+                          (rrclass :IN)
                           broadcasting)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
     (dns-service-query-record pointer full-name rrtype rrclass interface-index broadcasting)
@@ -81,8 +99,9 @@
               :callback callback)))
 
 (defun register-record (operation
-                        full-name rrtype rrclass rdata
+                        full-name rrtype rdata
                         &key interface-index
+                             (rrclass :IN)
                              identity
                              (ttl 0))
   (fli:with-dynamic-foreign-objects ((pointer record-ref))
@@ -112,28 +131,19 @@
   (dns-service-remove-record (operation-handle operation)
                              record-ref))
 
-(defun reconfirm-record (full-name rrtype rrclass rdata
+(defun reconfirm-record (full-name rrtype rdata
                          &key interface-index
+                              (rrclass :IN)
                               force)
   (dns-service-reconfirm-record force interface-index full-name rrtype rrclass rdata))
 
-(defun construct-full-name (service type domain)
-  (fli:with-dynamic-foreign-objects ((buffer :char
-                                      :nelems +max-domain-name-length+))
-    (dns-service-construct-full-name buffer service type domain)
-    (fli:convert-from-foreign-string buffer)))
 
 ;;;;
 ;;;; Handful additions
 ;;;;
 
-(defvar *meta-query-services-types*
-  "_services._dns-sd._udp.local.")
-
 (defun enumerate-services-types (&key callback
                                       interface-index)
-  (query-record *meta-query-services-types*
-                +service-type-PTR+
-                +service-class-IN+
-                :interface-index interface-index
-                :callback callback))
+  (query-record "_services._dns-sd._udp.local." :PTR
+                :callback callback
+                :interface-index interface-index))

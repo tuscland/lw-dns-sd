@@ -1,10 +1,30 @@
-(in-package #:com.wildora.dnssd)
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
-(define-condition dnssd-error (error)
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; Base errors definitions.
+
+
+(in-package #:com.wildora.dns-sd)
+
+(define-condition dns-sd-error (error)
   ()
-  (:documentation "All errors specific to DNSSD are of this type."))
+  (:documentation "All errors specific to DNS-SD are of this type."))
 
-(define-condition result-error (dnssd-error)
+(define-condition result-error (dns-sd-error)
   ((code
     :reader result-error-code
     :initarg :code))
@@ -14,7 +34,7 @@
                      (result-code-description
                       (result-error-code condition))
                      (result-error-code condition))))
-  (:documentation "Signaled if a DNSSD foreign function returns an error code."))
+  (:documentation "Signalled if a DNS-SD foreign function returns an error code."))
 
 (defparameter *result-codes-descriptions*
   '((-65538 . "No such name")

@@ -1,4 +1,24 @@
-(in-package #:com.wildora.dnssd)
+;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+
+;;; DNS Service Discovery for LispWorks.
+;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
+
+;;; Licensed under the Apache License, Version 2.0 (the "License");
+;;; you may not use this file except in compliance with the License.
+;;; You may obtain a copy of the License at
+;;;
+;;;     http://www.apache.org/licenses/LICENSE-2.0
+;;;
+;;; Unless required by applicable law or agreed to in writing,
+;;; software distributed under the License is distributed on an "AS
+;;; IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+;;; express or implied.  See the License for the specific language
+;;; governing permissions and limitations under the License.
+
+;;; TXT-RECORD building and parsing.
+
+
+(in-package #:com.wildora.dns-sd)
 
 (defun bytes-to-string (sequence &key (start 0) (end (length sequence)))
   "Converts a sequence of bytes (unsigned-byte 8) to a string using ~
@@ -11,6 +31,14 @@
   "Converts a string to a sequence of bytes (unsigned-byte 8) using ~
    the implementation's default character encoding."
   (ef:encode-lisp-string string :utf-8))
+
+
+;;;;
+;;;; Following code (c) John Wiseman (jjwiseman@yahoo.com)
+;;;; With modifications by Camille Troillard
+;;;; https://github.com/wiseman/cl-zeroconf/blob/master/bonjour-apple-mdns.lisp
+;;;; Licensed under the MIT license
+;;;;
 
 ;; Section 6.1 of
 ;; http://files.dns-sd.org/draft-cheshire-dnsext-dns-sd.txt claims
@@ -31,40 +59,35 @@
 ;; keys."
 
 (defun build-txt-record (properties)
-  (flet ((concat (&rest args)
-	   (apply #'concatenate 'vector args)))
-    ;; RFC 1035 doesn't allow a TXT record to contain *zero* strings,
-    ;; so a single empty string is the smallest legal DNS TXT record.
-   (unless properties
-     (setq properties (list nil)))
-   (let ((sequence (reduce #'concat
-                           (mapcar #'(lambda (property)
-                                       (let ((sub-record (build-property-sub-record property)))
-                                         (assert (<= (length sub-record) 255))
-                                         (concatenate 'vector
-                                                      (vector (length sub-record))
-                                                      sub-record)))
-                                   properties))))
-     (make-array (length sequence)
-                 :element-type '(unsigned-byte 8)
-                 :initial-contents sequence))))
+  ;; RFC 1035 doesn't allow a TXT record to contain *zero* strings,
+  ;; so a single empty string is the smallest legal DNS TXT record.
+  (unless properties
+    (setq properties (list nil)))
+  (let ((sequence (reduce #'(lambda (&rest args)
+                              (apply 'concatenate 'vector args))
+                          (mapcar #'(lambda (property)
+                                      (let ((sub-record (build-property-sub-record property)))
+                                        (concatenate 'vector
+                                                     (vector (length sub-record))
+                                                     sub-record)))
+                                  properties))))
+    (make-array (length sequence)
+                :element-type '(unsigned-byte 8)
+                :initial-contents sequence)))
 
 
-(defconstant +key-value-separator+ 61) ;; #\= in ASCII.
+(defconstant +key-value-separator+
+  (char-code #\=))
 
 (defun build-property-sub-record (property)
-  (let ((key (car property))
-	(value (cdr property)))
-    (if (null value)
-	(string-to-bytes key)
-      (if (null value)
-          (string-to-bytes (format nil "~A=" key))
-        (if (stringp value)
-            (string-to-bytes (format nil "~A=~A" key value))
-          (concatenate 'vector
-                       (string-to-bytes key)
-                       (list +key-value-separator+)
-                       value))))))
+  (let ((result
+         (when-let* ((key (car property))
+                     (value (cdr property)))
+           (check-type key string)
+           (check-type value string)
+           (string-to-bytes (format nil "~A=~A" key value)))))
+    (assert (< (length result) 256))
+    result))
 
 
 ;; Section 6.4 of
@@ -84,14 +107,14 @@
 ;;    but the first occurrence of that attribute."
 
 (defun parse-txt-record (record)
-  "Parses a Zeroconf-style TXT record (see
+  "Parses a DNS-style TXT record (see
 <http://www.zeroconf.org/Rendezvous/txtrecords.html>) into an
-association list of \(KEY . VALUE) pairs.  TXT record strings of the
-form \"KEY\" result in a \(KEY . NIL) pair, strings of the form
-\"KEY=\" result in a \(KEY . <empty vector>) pair, and strings of the
-form \"KEY=VALUE\" result in a \(KEY . VALUE) pair.  KEY is always a
+association list of (KEY . VALUE) pairs.  TXT record strings of the
+form \"KEY\" result in a (KEY . NIL) pair, strings of the form
+\"KEY=\" result in a (KEY . <empty vector>) pair, and strings of the
+form \"KEY=VALUE\" result in a (KEY . VALUE) pair.  KEY is always a
 string, and VALUE, if present, is a vector with elements of type
-\(unsigned-byte 8) \(Zeroconf TXT records can contain binary data)."
+(unsigned-byte 8) (DNS TXT records can contain binary data)."
   (let ((properties '()))
     (map-txt-record #'(lambda (key value)
 			(push (cons key value)
@@ -103,21 +126,23 @@ string, and VALUE, if present, is a vector with elements of type
   (labels ((safe-min (a b)
 	     (cond ((null a) b)
 		   ((null b) a)
-		   (T (min a b))))
+		   (t (min a b))))
 	   (parse (pos)
-	     (if (>= pos (length record))
-		 (values)
-		 (let* ((len (elt record pos)))
-		   (when (> len 0)
-		     (let ((key-end-pos (position +key-value-separator+ record :start (+ pos 1))))
-		       (let ((key (bytes-to-string record
-                                                   :start (+ pos 1)
-                                                   :end (safe-min key-end-pos (+ pos 1 len))))
-			     (value (if key-end-pos
-                                        (bytes-to-string record
-                                                         :start (+ key-end-pos 1)
-                                                         :end(+ pos len 1))
-					nil)))
-			 (funcall fn key value))))
-		   (parse (+ pos len 1))))))
+	     (when (< pos (length record))
+               (let ((len (elt record pos)))
+                 (incf pos)
+                 (when (> len 0)
+                   (let* ((key-end-pos (position +key-value-separator+
+                                                 record
+                                                 :start pos))
+                          (key (bytes-to-string record
+                                                :start pos
+                                                :end (safe-min key-end-pos
+                                                               (+ pos len))))
+                          (value (when key-end-pos
+                                   (bytes-to-string record
+                                                    :start (1+ key-end-pos)
+                                                    :end (+ pos len)))))
+                     (funcall fn key value)))
+                 (parse (+ pos len))))))
     (parse 0)))
