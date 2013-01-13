@@ -1,4 +1,4 @@
-;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+;;;; -*- encoding: utf-8; mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
 ;;; DNS Service Discovery for LispWorks.
 ;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
@@ -22,7 +22,7 @@
 
 (defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)
-(defconstant *process-join-timeout* 10)
+(defparameter *process-join-timeout* 10)
 
 
 (defun dispatch-running-p ()

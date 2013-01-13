@@ -1,4 +1,4 @@
-;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+;;;; -*- encoding: utf-8; mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
 ;;; DNS Service Discovery for LispWorks.
 ;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
@@ -20,9 +20,10 @@
 
 (in-package #:com.wildora.dns-sd)
 
-#+win32
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (fli:register-module "iphlpapi"))
+  (defconstant IFNAMSIZ 16)
+  #+win32 (fli:register-module "iphlpapi"))
 
 (fli:define-foreign-function (if-name-to-index "if_nametoindex")
     ((name (:reference-pass (:ef-mb-string :limit IFNAMSIZ))))

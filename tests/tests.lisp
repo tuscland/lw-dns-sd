@@ -1,4 +1,4 @@
-;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+;;;; -*- encoding: utf-8; mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
 ;;; DNS Service Discovery for LispWorks.
 ;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
@@ -63,8 +63,7 @@
 
 (defun run-tests ()
   (map nil #'(lambda (test)
-               (format *debug-io*
-                       "~&~A~%" test)
+               (format *debug-io* "~&~A~%" test)
                (funcall test))
        *test-suite*)
   t)

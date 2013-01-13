@@ -1,4 +1,4 @@
-;;;; -*- mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
+;;;; -*- encoding: utf-8; mode: LISP; syntax: COMMON-LISP; indent-tabs-mode: nil -*-
 
 ;;; DNS Service Discovery for LispWorks.
 ;;; Copyright (c) 2013, Camille Troillard. All rights reserved.
