@@ -4,3 +4,5 @@
 *.64xfasl
 *.ofasl
 *.64ofasl
+*.ufasl
+
