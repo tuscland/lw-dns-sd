@@ -24,6 +24,9 @@
   ()
   (:documentation "All errors specific to DNS-SD are of this type."))
 
+(define-condition timeout-error (dns-sd-error)
+  ())
+
 (define-condition result-error (dns-sd-error)
   ((code
     :reader result-error-code

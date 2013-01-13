@@ -35,16 +35,16 @@
            (:requires
             (:load "package")
             (:load "constants")))
-          (:in-order-to :compile ("result")
-           (:requires
-            (:load "errors")))
           (:in-order-to :compile ("core")
            (:requires
             (:load "foreign")))
           (:in-order-to :compile "operation"
            (:requires
             (:load "errors")
-            (:load "result")))))
+            (:load "result")))
+          (:in-order-to :compile ("dispatch")
+           (:requires
+            (:load "errors")))))
 
 (defsystem #:dns-sd-tests
   (:default-pathname "tests")

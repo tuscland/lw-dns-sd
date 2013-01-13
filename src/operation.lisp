@@ -22,18 +22,12 @@
 
 (in-package #:com.wildora.dns-sd)
 
-(defparameter *default-result-timeout* 60)
-
 (defun daemon-version ()
   (fli:with-dynamic-foreign-objects ((result :uint32)
                                      (size :uint32
                                            :initial-element (fli:size-of :uint32)))
     (dns-service-get-property "DaemonVersion" result size)
     (fli:dereference result)))
-
-
-(define-condition result-timeout-error (dns-sd-error)
-  ())
 
 (defclass operation (comm:socket-stream)
   ((handle
@@ -66,23 +60,12 @@
   (fli:null-pointer-p
    (operation-handle self)))
 
-(defmethod operation-enqueue-result ((self operation) (result result))
+(defmethod operation-enqueue-result ((self operation) result)
   (mp:mailbox-send
    (operation-results-queue self)
    result))
 
-(defmethod operation-next-result ((self operation)
-                                  &key (timeout *default-result-timeout*))
-  (check-result
-   (multiple-value-bind (object no-timeout-p)
-       (mp:mailbox-read (operation-results-queue self)
-                        "Waiting for next operation result"
-                        timeout)
-     (if no-timeout-p
-         object
-       (error 'result-timeout-error)))))
-
-(defmethod operation-invoke-callback ((self operation) (result result))
+(defmethod operation-invoke-callback ((self operation) result)
   (funcall (or (operation-callback self)
                #'operation-enqueue-result)
            self result))
@@ -92,16 +75,25 @@
 
 (defmethod reply (error-code more-coming-p &rest result-values)
   (maybe-signal-result-error error-code)
-  (assert *current-operation*)
   (operation-invoke-callback *current-operation*
-                             (make-result more-coming-p result-values)))
+                             (make-result more-coming-p
+                                          result-values)))
 
 (defmethod process-result ((self operation))
   "Called from the dispatched to process pending results."
   (handler-bind ((result-error
                   #'(lambda (condition)
-                      (operation-invoke-callback
-                       self (make-error-result condition)))))
+                      (operation-invoke-callback self condition))))
     (let ((*current-operation* self))
       (dns-service-process-result
        (operation-handle self)))))
+
+(defun wait-for-result (operation &key (timeout *default-timeout*))
+  (check-result
+   (multiple-value-bind (object no-timeout-p)
+       (mp:mailbox-read (operation-results-queue operation)
+                        "Waiting for next operation result"
+                        timeout)
+     (if no-timeout-p
+         object
+       (error 'timeout-error)))))

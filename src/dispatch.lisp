@@ -47,8 +47,7 @@
         (dispatch-send #'(lambda ()
                            (mp:process-kill
                             (mp:get-current-process))))
-        (mp:process-join *process*
-                         :timeout *process-join-timeout*)
+        (mp:process-join *process* :timeout *process-join-timeout*)
         (setf *process* nil))
     (warn "DNS-SD Dispatch not running"))  
   (values))
@@ -109,14 +108,9 @@
 ;;;; Public interface
 ;;;;
 
-(define-condition cancel-timeout-error (dns-sd-error)
-  ())
-
-(defparameter *default-cancel-timeout* 60)
-
 (defun cancel (operation
                &key callback
-                    (timeout *default-cancel-timeout*))
+                    (timeout *default-timeout*))
   (let (finished-waiting)
     (dispatch-remove-operation operation
                                (or callback
@@ -127,7 +121,7 @@
                                             timeout
                                             #'(lambda ()
                                                 finished-waiting))
-        (error 'cancel-timeout-error))))
+        (error 'timeout-error))))
   (values))
 
 (defun dispatch (&rest operation-initargs)

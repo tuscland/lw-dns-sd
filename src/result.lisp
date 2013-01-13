@@ -23,21 +23,6 @@
 (in-package #:com.wildora.dns-sd)
 
 (defclass result ()
-  ())
-
-(defgeneric result-value (result value-name)
-  (:method ((result result) (value-name symbol))
-   (error "Result ~A does not support named values" result)))
-
-(defgeneric result-more-coming-p (result)
-  (:method ((result result))
-   nil))
-
-(defgeneric check-result (result)
-  (:method ((result result))
-   result))
-
-(defclass reply-result (result)
   ((values
     :reader result-values
     :initform nil
@@ -47,33 +32,28 @@
     :initform nil
     :initarg :more-coming-p)))
 
-(defmethod result-value ((self reply-result) (name symbol))
+(defgeneric check-result (object)
+  (:method ((object result))
+   object))
+
+(defmethod result-value ((self result) (name symbol))
   ;; TODO: test property membership properly
   (unless (member name (result-values self))
     (error "Result ~A does have a value named ~A" self name))
   (getf (result-values self)
         name))
 
-(defmethod print-object ((self reply-result) stream)
+(defmethod print-object ((self result) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (format stream "MORE-COMING: ~A, ~S"
             (result-more-coming-p self)
             (result-values self))))
 
-
-(defclass error-result (result)
-  ((error
-    :reader error-result-error
-    :initform nil
-    :initarg :error)))
-
-(defmethod check-result ((self error-result))
-  (error (error-result-error self)))
-
-(defun make-error-result (error)
-  (make-instance 'error-result :error error))
-
 (defun make-result (more-coming-p properties)
-  (make-instance 'reply-result
+  (make-instance 'result
                  :more-coming-p more-coming-p
                  :properties properties))
+
+(defmethod check-result ((object condition))
+  (error object))
+

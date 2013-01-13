@@ -21,6 +21,7 @@
 (in-package #:com.wildora.dns-sd)
 
 (defvar *library-version* "1.0.0")
+(defparameter *default-timeout* 60)
 
 (defconstant +interface-index-any+        #x00000000)
 (defconstant +interface-index-local-only+ #xFFFFFFFF)

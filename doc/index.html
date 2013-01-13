@@ -30,7 +30,7 @@
   <li><a href="#testing">Testing</a></li>
   <li><a href="#overview">Overview</a></li>
   <li><a href="#main-api">Main API</a>
-  <ul>
+    <ul>
     <li><a href="#register"><code>register</code></a></li>
     <li><a href="#enumerate-domains"><code>enumerate-domains</code></a></li>
     <li><a href="#browse"><code>browse</code></a></li>
@@ -44,58 +44,53 @@
     <li><a href="#create-connection"><code>create-connection</code></a></li>
     <li><a href="#register-record"><code>register-record</code></a></li>
     <li><a href="#reconfirm-record"><code>reconfirm-record</code></a></li>
-  </ul></li>
+    </ul>
+  </li>
   <li><a href="#operations">Operations</a>
     <ul>
-      <li><a href="#operation-next-result"><code>operation-next-result</code></a></li>
-      <li><a href="#*default-result-timeout*"><code>*default-result-timeout*</code></a></li>
-      <li><a href="#cancel"><code>cancel</code></a></li>
-      <li><a href="#*default-cancel-timeout*"><code>*default-cancel-timeout*</code></a></li>
+    <li><a href="#wait-for-result"><code>wait-for-result</code></a></li>
+    <li><a href="#default-timeout"><code>*default-result-timeout*</code></a></li>
+    <li><a href="#cancel"><code>cancel</code></a></li>
     </ul>
   </li>
   <li><a href="#results">Results</a>
     <ul>
-      <li><a href="#result"><code>result</code></a></li>
-      <li><a href="#error-result"><code>error-result</code></a></li>
-      <li><a href="#error-result-error"><code>error-result-error</code></a></li>
-      <li><a href="#result-more-coming-p"><code>result-more-coming-p</code></a></li>
-      <li><a href="#result-values"><code>result-properties</code></a></li>
-      <li><a href="#result-value"><code>result-property</code></a></li>
+    <li><a href="#result-more-coming-p"><code>result-more-coming-p</code></a></li>
+    <li><a href="#result-values"><code>result-properties</code></a></li>
+    <li><a href="#result-value"><code>result-property</code></a></li>
     </ul>
   </li>
   <li><a href="#dispatch">Dispatch</a>
     <ul>
-      <li><a href="#dispatch-running-p"><code>dispatcher-running-p</code></a></li>
-      <li><a href="#start-dispatch"><code>dispatcher-start</code></a></li>
-      <li><a href="#stop-dispatch"><code>dispatcher-stop</code></a></li>
+    <li><a href="#dispatch-running-p"><code>dispatcher-running-p</code></a></li>
+    <li><a href="#start-dispatch"><code>dispatcher-start</code></a></li>
+    <li><a href="#stop-dispatch"><code>dispatcher-stop</code></a></li>
     </ul>
   </li>
   <li><a href="#if-name">Network interface name to index</a>
     <ul>
-      <li><a href="#if-index-to-name"><code>if-index-to-name</code></a></li>
-      <li><a href="#if-name-index"><code>if-name-index</code></a></li>
-      <li><a href="#if-name-to-index"><code>if-name-to-index</code></a></li>
+    <li><a href="#if-index-to-name"><code>if-index-to-name</code></a></li>
+    <li><a href="#if-name-index"><code>if-name-index</code></a></li>
+    <li><a href="#if-name-to-index"><code>if-name-to-index</code></a></li>
     </ul>
   </li>
   <li><a href="#errors">Errors</a>
     <ul>
-      <li><a href="#dns-sd-error"><code>dns-sd-error</code></a></li>
-      <li><a href="#result-error"><code>result-error</code></a></li>
-      <li><a href="#result-error-code"><code>result-error-code</code></a></li>
-      <li><a href="#result-timeout-error"><code>result-timeout-error</code></a></li>
-      <li><a href="#cancel-timeout-error"><code>cancel-timeout-error</code></a></li>
+    <li><a href="#dns-sd-error"><code>dns-sd-error</code></a></li>
+    <li><a href="#result-error"><code>result-error</code></a></li>
+    <li><a href="#result-error-code"><code>result-error-code</code></a></li>
+    <li><a href="#timeout-error"><code>result-timeout-error</code></a></li>
     </ul>
   </li>
   <li><a href="#utility">Utility functions</a>
     <ul>
-      <li><a href="#build-txt-record"><code>build-txt-record</code></a></li>
-      <li><a href="#parse-txt-record"><code>parse-txt-record</code></a></li>
-      <li><a href="#bytes-to-string"><code>bytes-to-string</code></a></li>
-      <li><a href="#string-to-bytes"><code>string-to-bytes</code></a></li>
-      <li><a href="#construct-full-name"><code>construct-full-name</code></a></li>
+    <li><a href="#build-txt-record"><code>build-txt-record</code></a></li>
+    <li><a href="#parse-txt-record"><code>parse-txt-record</code></a></li>
+    <li><a href="#bytes-to-string"><code>bytes-to-string</code></a></li>
+    <li><a href="#string-to-bytes"><code>string-to-bytes</code></a></li>
+    <li><a href="#construct-full-name"><code>construct-full-name</code></a></li>
     </ul>
   </li>
-  </ul>
   <li><a href="#ack">Acknowledgements</a></li>
 </ul>
 
@@ -127,7 +122,8 @@ Browser Tool or the Listener to load the DNS-SD system:</p>
 
 <pre class="code">
 CL-USER 3 &gt; <b>(compile-system :dns-sd :load t)</b>
-<i>;; compilation output...</i></pre>
+<i>;; compilation output...
+(:DNS-SD)</i></pre>
 
 
 <h3><a class=none name="testing">Testing</a></h3>
@@ -137,7 +133,7 @@ CL-USER 3 &gt; <b>(compile-system :dns-sd :load t)</b>
 
 <pre class="code">
 CL-USER 4 &gt; <b>(compile-system :dns-sd-tests :load t)</b>
-<i>; Loading fasl file /Users/camille/lisp/plombier/dns-sd/src/constants.64xfasl
+<i>;; compilation-output ...
 (:DNS-SD-TESTS)</i>
 
 CL-USER 5 &gt; <b>(dns-sd-tests:run-tests)</b>
@@ -539,9 +535,9 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
 <h3><a name="operations">Operations</a></h3>
 
 <div class='item'>
-  <div class='type'><a name='operation-next-result'>[Function]</a></div>
+  <div class='type'><a name='wait-for-result'>[Function]</a></div>
   <div class='signature'>
-    <code class='name'>operation-next-result</code>
+    <code class='name'>wait-for-result</code>
     <span class='args'>
       <var>operation</var>
       <code class ='llkw'>&amp;key</code>
@@ -551,20 +547,20 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
   </div>
 
   <blockquote class='description'>
-    <p>Synchronous interface for getting results from a running operation.  Returns a <tt>result</tt> if the call succeed in less that <tt>timeout</tt> seconds, or if the result is an error that occurred within the dispatch loop, signals the <a href="#result-error">result-error</a>.</p>
-    <p><var>operation</var> must be the running operation returned by a function of the <a href="#main-api">Main API</a></p>
-    <p><var>timeout</var> specifies the time in seconds after which the function signals a <a href="#result-timeout-error">result-timeout-error</a>.  If nil is passed, the timeout is infinite (there is no timeout).  Default value is <tt>*default-result-timeout*</tt>.</p>
+    <p>Interface for getting results synchronously from a running operation.  Returns a <tt>result</tt> if the call succeed in less that <var>timeout</var> seconds.  If the result is a <a href="#result-error"><tt>result-error</tt></a> that occurred within the dispatch loop, a call to <tt>wait-for-result</tt> will raise the error.</p>
+    <p><var>operation</var> must be a running operation returned by a function of the <a href="#main-api">Main API</a></p>
+    <p><var>timeout</var> specifies the time in seconds after which the function signals a <a href="#timeout-error"><tt>timeout-error</tt></a>.  If nil is passed, the timeout is infinite (there is no timeout).  Default value is <tt>*default-timeout*</tt>.</p>
   </blockquote>
 </div>
 
 <div class='item'>
-  <div class='type'><a name='*default-result-timeout*'>[Special variable]</a></div>
+  <div class='type'><a name='default-timeout'>[Special variable]</a></div>
   <div class='signature'>
-    <code class='name'>*default-result-timeout*</code>
+    <code class='name'>*default-timeout*</code>
   </div>
 
   <blockquote class='description'>
-    <p>Default value (60 seconds) for the timeout argument in <a href="#operation-next-result"><tt>operation-next-result</tt></a>.  Nil means no timeout, or infinite wait.  Can be set or dynamically bound to provide another system-wide default value.</p>
+    <p>Default value (60 seconds) for functions that requires a timeout keyword argument.  Nil means infinite wait.</p>
   </blockquote>
 </div>
 
@@ -583,61 +579,13 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
   <blockquote class='description'>
     <p>Cancel a running operation.</p>
     <p><var>operation</var> must be a running operation.</p>
-    <p>if <var>callback</var> is nil, the call is synchronous, and <var>operation</var> is canceled after the call has returned.  Otherwise, callback is a function of no argument called from the dispatch process when the operation is canceled, in which case the argument <var>timeout</var> is ignored.</p>
-    <p><var>timeout</var> specifies the time in seconds after which the function signals a <a href="#result-timeout-error">cancel-timeout-error</a>.  If nil is passed, the timeout is infinite (there is no timeout).  Default value is <tt>*default-cancel-timeout*</tt>.</p>
-  </blockquote>
-</div>
-
-<div class='item'>
-  <div class='type'><a name='*default-cancel-timeout*'>[Special variable]</a></div>
-  <div class='signature'>
-    <code class='name'>*default-cancel-timeout*</code>
-  </div>
-
-  <blockquote class='description'>
-    <p>Default value (60 seconds) for the timeout argument in <a href="#cancel"><tt>cancel</tt></a>.  Nil means no timeout, or infinite wait.  Can be set or dynamically bound to provide another system-wide default value.</p>
+    <p>With <var>callback</var> being nil, the call is synchronous, and <var>operation</var> is canceled after the call has returned.  Otherwise, callback is a function of no argument called from the dispatch process when the operation is canceled, in which case the argument <var>timeout</var> is ignored.</p>
+    <p><var>timeout</var> specifies the time in seconds after which the function signals a <a href="#timeout-error">timeout-error</a>.  If nil, the wait is infinite.  Default value is <tt>*cancel-timeout*</tt>.</p>
   </blockquote>
 </div>
 
 
 <h3><a name="results">Results</a></h3>
-
-<div class='item'>
-  <div class='type'><a name='result'>[Class]</a></div>
-  <div class='signature'>
-    <code class='name'>result</code>
-  </div>
-
-  <blockquote class='description'>
-    <p>The base class for all result objects. Results are object delivered asynchronously by <var>operations</var> using callbacks, or returned synchronously by calls to <a href="#operation-next-result"><tt>operation-next-result</tt></a>.  Error result are never returned synchronously, instead they are thown in the current context.</p>
-  </blockquote>
-</div>
-
-<div class='item'>
-  <div class='type'><a name='error-result'>[Class]</a></div>
-  <div class='signature'>
-    <code class='name'>error-result</code>
-  </div>
-
-  <blockquote class='description'>
-    <p>Subclass of <a href="#result"><tt>result</tt></a> representing errors occurring on operations during their processing in the dispatch loop.  Error results must be handled by asynchronous callbacks.</p>
-  </blockquote>
-</div>
-
-<div class='item'>
-  <div class='type'><a name='error-result-error'>[Method]</a></div>
-  <div class='signature'>
-    <code class='name'>error-result-error</code>
-    <span class='args'>
-      <var>result</var>
-    </span>
-    <span class='result'>➔ <var>error</var></span>
-  </div>
-
-  <blockquote class='description'>
-    <p>Returns the error captured during the asynchronous processing of an operation in the dispatch loop.</p>
-  </blockquote>
-</div>
 
 <div class='item'>
   <div class='type'><a name='result-more-coming-p'>[Generic function]</a></div>
@@ -651,7 +599,6 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
 
   <blockquote class='description'>
     <p>Indicates that at least one more result is queued and will be delivered following immediately after this one.  When the <tt>result-more-coming-p</tt> is <tt>t</tt>, applications should not immediately update their UI, because this can result in a great deal of ugly flickering on the screen, and can waste a great deal of CPU time repeatedly updating the screen with content that is then immediately erased, over and over. Applications should wait until <tt>result-more-coming-p</tt> is <tt>nil</tt>, and then update their UI when no more changes are imminent.</p>
-    <p>Error results always return <tt>nil</tt> because no other result can come after.</p>
   </blockquote>
 </div>
 
@@ -683,7 +630,7 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
   </div>
 
   <blockquote class='description'>
-    <p>Throws an error when the result has no such named value, or if the result is an <a href="#error-result"><tt>error-result</tt></a>.</p>
+    <p>Throws an error when the result has no such named value.</p>
     <p>Returns the named value contained in result where <var>name</var> is a keyword.  Valid keywords depend on the result of the operation.</p>
   </blockquote>
 </div>

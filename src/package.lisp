@@ -21,8 +21,40 @@
 (defpackage #:com.wildora.dns-sd
   (:nicknames #:dns-sd)
   (:export
-   *library-version*
+   #:*library-version*
+   #:*default-timeout*
 
+   ;; Main API
+   #:register
+   #:enumerate-domains
+   #:browse
+   #:resolve
+   #:get-addr-info
+   #:query-record
+   #:enumerate-services-types
+   #:nat-port-mapping-create
+   #:add-record
+   #:update-record
+   #:remove-record
+   #:register-record
+   #:reconfirm-record
+   #:create-connection
+
+   ;; Operations
+   #:wait-for-result
+   #:cancel
+
+   ;; Results
+   #:check-result
+   #:result-values
+   #:result-value
+   #:result-more-coming-p
+
+   ;; Dispatch
+   #:start-dispatch
+   #:stop-dispatch
+   #:dispatch-running-p
+   
    ;; Network interface name to index
    #:if-name-to-index
    #:if-index-to-name
@@ -43,45 +75,9 @@
 
    ;; Errors
    #:dns-sd-error
+   #:timeout-error
    #:result-error
-   #:result-error-code
-
-   ;; Results
-   #:result
-   #:result-values
-   #:result-value
-   #:result-more-coming-p
-   #:error-result
-   #:error-result-error
-
-   ;; Operations
-   #:operation-next-result
-   #:*default-result-timeout*
-   #:result-timeout-error
-   #:cancel
-   #:*default-cancel-timeout*
-   #:cancel-timeout-error
-
-   ;; Dispatch
-   #:start-dispatch
-   #:stop-dispatch
-   #:dispatch-running-p
-
-   ;; Main API
-   #:register
-   #:enumerate-domains
-   #:browse
-   #:resolve
-   #:get-addr-info
-   #:query-record
-   #:enumerate-services-types
-   #:nat-port-mapping-create
-   #:add-record
-   #:update-record
-   #:remove-record
-   #:register-record
-   #:reconfirm-record
-   #:create-connection))
+   #:result-error-code))
 
 (defpackage #:com.wildora.dns-sd-user
   (:nicknames #:dns-sd-user)
