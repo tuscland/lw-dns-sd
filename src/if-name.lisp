@@ -41,47 +41,44 @@
         (fli:convert-from-foreign-string name)))))
 
 #-win32
-(fli:define-c-struct (if-nameindex
-                      (:foreign-name "if_nameindex"))
-  (index (:unsigned :int))
-  (name (:pointer :char)))
+(progn
+  (fli:define-c-struct (if-nameindex
+                        (:foreign-name "if_nameindex"))
+    (index (:unsigned :int))
+    (name (:pointer :char)))
 
-#-win32
-(fli:define-foreign-function (%if-nameindex "if_nameindex")
-    ()
-  :result-type (:ptr (:struct if-nameindex)))
+  (fli:define-foreign-function (%if-nameindex "if_nameindex")
+      ()
+    :result-type (:ptr (:struct if-nameindex)))
 
-#-win32
-(fli:define-foreign-function (%if-freenameindex "if_freenameindex")
-    ((ptr (:pointer (:struct if-nameindex))))
-  :result-type :void)
+  (fli:define-foreign-function (%if-freenameindex "if_freenameindex")
+      ((ptr (:pointer (:struct if-nameindex))))
+    :result-type :void)
 
-#-win32
-(defun if-name-index ()
-  (let ((result (%if-nameindex)))
-    (unless (fli:null-pointer-p result)
-      (loop :with nameindex := (fli:copy-pointer result)
-            :for index := (fli:foreign-slot-value nameindex 'index)
-            :while (plusp index)
-            :collect (cons index
-                           (fli:convert-from-foreign-string
-                            (fli:foreign-slot-value nameindex 'name)))
-            :do (fli:incf-pointer nameindex)
-            :finally (%if-freenameindex result)))))
+  (defun if-name-index ()
+    (let ((result (%if-nameindex)))
+      (unless (fli:null-pointer-p result)
+        (loop :with nameindex := (fli:copy-pointer result)
+              :for index := (fli:foreign-slot-value nameindex 'index)
+              :while (plusp index)
+              :collect (cons index
+                             (fli:convert-from-foreign-string
+                              (fli:foreign-slot-value nameindex 'name)))
+              :do (fli:incf-pointer nameindex)
+              :finally (%if-freenameindex result))))))
 
 #+win32
-(fli:define-foreign-function (%get-number-of-interfaces "GetNumberOfInterfaces")
-    ((ptr (:pointer win32:dword)))
-  :result-type win32:dword)
+(progn
+  (fli:define-foreign-function (%get-number-of-interfaces "GetNumberOfInterfaces")
+      ((ptr (:pointer win32:dword)))
+    :result-type win32:dword)
 
-#+win32
-(defun get-number-of-interfaces ()
-  (fli:with-dynamic-foreign-objects ((ptr win32:dword))
-    (%get-number-of-interfaces ptr)
-    (fli:dereference ptr)))
+  (defun get-number-of-interfaces ()
+    (fli:with-dynamic-foreign-objects ((ptr win32:dword))
+      (%get-number-of-interfaces ptr)
+      (fli:dereference ptr)))
 
-#+win32
-(defun if-name-index ()
-  (loop :for index :from 1 :to (get-number-of-interfaces)
-        :collect (cons index
-                       (if-index-to-name index))))
+  (defun if-name-index ()
+    (loop :for index :from 1 :to (get-number-of-interfaces)
+          :collect (cons index
+                         (if-index-to-name index)))))

@@ -27,6 +27,7 @@
             "txt-record"
             "result"
             "foreign"
+            "fli-templates"
             "operation"
             "dispatch"
             "core"
@@ -35,7 +36,7 @@
            (:requires
             (:load "package")
             (:load "constants")))
-          (:in-order-to :compile ("core")
+          (:in-order-to :compile ("core" "fli-templates")
            (:requires
             (:load "foreign")))
           (:in-order-to :compile "operation"
