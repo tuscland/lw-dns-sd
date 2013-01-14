@@ -30,16 +30,17 @@
         :do (return result)))
 
 (defmacro signals (error &body body)
-  `(handler-case (progn ,@body)
-     (,error (condition)
-       (declare (ignore condition))
-       t)
-     (condition (conndition)
-       (declare (ignore condition))
-       (error "Expected a condition of type ~A" ',error))
-     (:no-error (&rest results)
-       (declare (ignore results))
-       (error "Failed to signal ~A" ',error))))
+  `(with-simple-restart (continue "Continue testing")
+     (handler-case (progn ,@body)
+       (,error (condition)
+         (declare (ignore condition))
+         t)
+       (condition (conndition)
+         (declare (ignore condition))
+         (error "Expected a condition of type ~A" ',error))
+       (:no-error (&rest results)
+         (error "Failed to signal ~A, instead got result: ~A"
+                ',error results)))))
 
 (defparameter *test-suite*
   '(test-if-name
@@ -104,39 +105,41 @@
     (register *test-service-port* "badtype")))
 
 (defun do-registration-conflict (conflict-error-p)
-  ;; 1. register a dummy service, automatically named
-  (let* ((operation (register *test-service-port*
-                              *test-service-type*
-                              :name "Registration Conflict"
-                              :no-auto-rename conflict-error-p))
-         (result (wait-for-result operation))
-         (registered-name (result-value result :name)))
-    (test-presence result)
-    ;; 2. register a service with the same name, but on a different
-    ;; port for conflict
-    (let* ((conflict-operation (register (1+ *test-service-port*)
-                                         *test-service-type*
-                                         :name registered-name
-                                         :no-auto-rename t))
-           (result (wait-for-result conflict-operation)))
-      (test-presence result)
-      (if conflict-error-p
-          ;; 3a. conflict error: a condition is signaled when getting
-          ;; the next result on the first operation.
-          (signals dns-sd-error
-            (wait-for-result operation))
-        ;; 3b. DNS-SD automatically renames our first service after
-        ;; some time, by notifying on the first operation.
-        (let ((result (wait-for-result operation)))
-          (assert (eq (result-value result :presence) :remove))
-          ;; 4. The service has eventually been renamed, compare
-          ;; that the new name is different.
-          (let ((result (wait-for-result operation)))
-            (assert (eq (result-value result :presence) :add))
-            (assert (not (string= registered-name
-                              (result-value result :name)))))))
-      (cancel conflict-operation))
-    (cancel operation)))
+  (if (> (daemon-version) 3000000)
+      ;; 1. register a dummy service, automatically named
+      (let* ((operation (register *test-service-port*
+                                  *test-service-type*
+                                  :name "Registration Conflict"
+                                  :no-auto-rename conflict-error-p))
+             (result (wait-for-result operation))
+             (registered-name (result-value result :name)))
+        (test-presence result)
+        ;; 2. register a service with the same name, but on a different
+        ;; port for conflict
+        (let* ((conflict-operation (register (1+ *test-service-port*)
+                                             *test-service-type*
+                                             :name registered-name
+                                             :no-auto-rename t))
+               (result (wait-for-result conflict-operation)))
+          (test-presence result)
+          (if conflict-error-p
+              ;; 3a. conflict error: a condition is signaled when getting
+              ;; the next result on the first operation.
+              (signals dns-sd-error
+                (wait-for-result operation))
+            ;; 3b. DNS-SD automatically renames our first service after
+            ;; some time, by notifying on the first operation.
+            (let ((result (wait-for-result operation)))
+              (assert (eq (result-value result :presence) :remove))
+              ;; 4. The service has eventually been renamed, compare
+              ;; that the new name is different.
+              (let ((result (wait-for-result operation)))
+                (assert (eq (result-value result :presence) :add))
+                (assert (not (string= registered-name
+                                      (result-value result :name)))))))
+          (cancel conflict-operation))
+        (cancel operation))
+    (format t "~&Skipping test because daemon version is below 3000000~%")))
 
 (defun test-registration-conflict-1 ()
   (do-registration-conflict nil))

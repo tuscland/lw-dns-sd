@@ -24,6 +24,8 @@
    #:*library-version*
    #:*default-timeout*
 
+   #:daemon-version
+
    ;; Main API
    #:register
    #:enumerate-domains
