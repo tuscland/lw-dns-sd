@@ -1,5 +1,5 @@
 DNS Service Discovery for LispWorks
-
+Version 1.0.0
 
 This library is a Common Lisp wrapper around the DNS-SD C API.
 
@@ -8,7 +8,7 @@ https://developer.apple.com/library/mac/#documentation/Networking/Conceptual/dns
 
 Using the DNS Service Discovery you will be able to:
 - Register, Browse and Resolve DNS-SD services,
-- Get IP addresses for host name in a portable way,
+- Get IP addresses from browsed hostnames,
 - Create, query, update and remove DNS resource records,
 - Create NAT port mappings, or get the NAT's external IP address.
 

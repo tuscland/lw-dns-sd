@@ -1,8 +1,24 @@
+/*
+ * CSS Style inspired from Xach Beane's documentation.
+ * See https://github.com/xach/zs3/blob/master/doc/style.css
+ *
+ */
 
 body {
     margin-left: 4em;
-    font: small/1.2em "Lucida Grande", "Trebuchet MS", "Bitstream Vera Sans", Verdana, Helvetica, sans-serif;
+    margin-right: 4em;
+    font: 12px "Lucida Grande", "Trebuchet MS", "Bitstream Vera Sans", Verdana, Helvetica, sans-serif;
+    line-height: 150%;
+}
 
+hr {
+    border: 0;
+    height: 1px;
+    background: #333;
+    background-image: -webkit-linear-gradient(left, #ccc, #999, #ccc);
+    background-image: -moz-linear-gradient(left, #ccc, #999, #ccc);
+    background-image: -ms-linear-gradient(left, #ccc, #999, #ccc);
+    background-image: -o-linear-gradient(left, #ccc, #999, #ccc);
 }
 
 p.copyright {
@@ -10,19 +26,23 @@ p.copyright {
     font-weight: bold;
 }
 
-#content {
-    margin-left: 4em;
-    margin-right: 12em;
+h1 {
+    margin-bottom: 0em;
+    margin-top: 1.5em;
 }
 
-h2, h3 {
+h2 {
     margin-bottom: 0em;
     margin-top: 2em;
 }
 
-p.html {
-    margin-left: 1em;
-    font-family: monospace;
+h3 {
+    margin-bottom: 0em;
+    margin-top: 3.5em;
+}
+
+.item {
+    margin-bottom: 3em;
 }
 
 .type {
@@ -30,7 +50,7 @@ p.html {
 }
 
 .signature {
-    color: #A01;
+    color: #10A;
     margin-left: 1em;
 }
 
@@ -43,7 +63,7 @@ p.html {
 }
 
 .signature span.result var {
-    color: #A01;
+    color: #10A;
 }
 
 div.signature {
@@ -66,13 +86,13 @@ blockquote.description {
 a[href] {
     text-decoration: none;
     border-bottom: dotted 1px #CCC;
-    color: #600;
+    color: #006;
 }
 
 a:hover[href] {
     text-decoration: none;
-    border-bottom: solid 1px #F00;
-    color: #F00;
+    border-bottom: solid 1px #00F;
+    color: #00F;
 }
 
 pre.code {
