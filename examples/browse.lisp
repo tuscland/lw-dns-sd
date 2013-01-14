@@ -22,24 +22,30 @@
 ;;
 ;; To try it, compile and load this file and execute:
 ;;
-;;      (DNS-SD-USER::BROWSER-EXAMPLE)
+;;      (CL-USER::BROWSER-EXAMPLE)
 
-(lw:compile-system :dns-sd :load t)
-
-(in-package #:dns-sd-user)
+(load (current-pathname "../defsystem"))
+(compile-system :dns-sd :load t)
 
 (defun callback-with-interface (interface function)
   (lambda (operation result)
     (capi:execute-with-interface-if-alive
      interface
-     function
-     interface operation result)))
+     function interface operation result)))
 
 (defun enumerate-service-types (&key callback
                                       interface-index)
-  (query-record "_services._dns-sd._udp.local." :PTR
-                :callback callback
-                :interface-index interface-index))
+  (dns-sd:query-record "_services._dns-sd._udp.local." :PTR
+                       :callback callback
+                       :interface-index interface-index))
+
+(defun display-message (message interface)
+  (setf (capi:titled-object-message interface)
+        message))
+
+(defun first-elt (sequence)
+  (when (plusp (length sequence))
+    (elt sequence 0)))
 
 (capi:define-interface browser ()
   ((query-operation
@@ -74,10 +80,6 @@
    :best-width 300
    :message-area t))
 
-(defun display-message (message interface)
-  (setf (capi:titled-object-message interface)
-        message))
-
 (defun browser-select-type (type interface)
   (display-message (format nil "Browsing ~A services ..." type)
                    interface)
@@ -85,13 +87,14 @@
                    (services browser-services)
                    (services-list browser-services-list)) interface
     (when operation
-      (cancel operation)
+      (dns-sd:cancel operation)
       (setf (capi:collection-items services-list) nil
             services nil))
     (when type
-      (setf operation (browse type
-                              :callback (callback-with-interface interface
-                                                                 #'browse-callback))))))
+      (setf operation
+            (dns-sd:browse type
+                           :callback (callback-with-interface interface
+                                                              #'browse-callback))))))
 
 (defun update-service-types (interface)
   (with-accessors ((types-pane browser-types-pane)
@@ -99,10 +102,10 @@
     (setf (capi:collection-items types-pane)
           (sort types #'string-lessp))
     (unless (browser-browse-operation interface)
-      (when (plusp (length (capi:collection-items types-pane)))
-        (let ((type (elt (capi:collection-items types-pane) 0)))
-          (setf (capi:choice-selected-item types-pane) type)
-          (browser-select-type type interface))))))
+      (when-let (type (first-elt
+                       (capi:collection-items types-pane)))
+        (setf (capi:choice-selected-item types-pane) type)
+        (browser-select-type type interface)))))
 
 (defun update-services (interface)
   (with-accessors ((services-list browser-services-list)) interface
@@ -111,7 +114,7 @@
                 #'string-lessp))))
 
 (defun handle-error (interface operation error)
-  (cancel operation)
+  (dns-sd:cancel operation)
   (display-message (format nil "Error occurred: ~A" error)
                    interface))
 
@@ -119,34 +122,35 @@
   (handle-error interface operation error))
 
 (defmethod browse-callback (interface operation result)
-  (let ((name (result-value result :name)))
+  (let ((name (dns-sd:result-value result :name)))
     (with-accessors ((services browser-services)) interface
-      (case (result-value result :presence)
+      (case (dns-sd:result-value result :presence)
         (:add
          (pushnew name services :test 'string=))
         (:remove
          (setf services
                (remove name services :test 'string=))))))
-  (unless (result-more-coming-p result)
+  (unless (dns-sd:result-more-coming-p result)
     (update-services interface)))
 
 (defmethod enumerate-service-types-callback (interface operation (error error))
   (handle-error interface operation error))
 
 (defmethod enumerate-service-types-callback (interface operation result)
-  (let* ((record (mapcar #'car (parse-txt-record
-                                (result-value result :rdata))))
+  (let* ((record (mapcar #'car
+                         (dns-sd:parse-txt-record
+                          (dns-sd:result-value result :rdata))))
          (type (format nil "~A.~A"
                        (first record)
                        (second record))))
     (with-accessors ((types browser-service-types)) interface
-      (case (result-value result :presence)
+      (case (dns-sd:result-value result :presence)
         (:add
          (pushnew type types :test 'string=))
         (:remove
          (setf types 
                (remove type types :test 'string=))))))
-  (unless (result-more-coming-p result)
+  (unless (dns-sd:result-more-coming-p result)
     (update-service-types interface)))
 
 (defun browser-create (interface)
@@ -157,7 +161,8 @@
 
 (defun browser-destroy (interface)
   (browser-select-type nil interface)
-  (cancel (browser-query-operation interface)))
+  (dns-sd:cancel
+   (browser-query-operation interface)))
 
 
 (defun browser-example ()
