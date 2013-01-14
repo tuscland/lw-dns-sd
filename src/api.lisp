@@ -128,14 +128,3 @@
                          &key (rrclass :IN)
                               force)
   (dns-service-reconfirm-record force interface-index full-name rrtype rrclass rdata))
-
-
-;;;;
-;;;; Handful additions
-;;;;
-
-(defun enumerate-services-types (&key callback
-                                      interface-index)
-  (query-record "_services._dns-sd._udp.local." :PTR
-                :callback callback
-                :interface-index interface-index))
