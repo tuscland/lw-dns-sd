@@ -1,6 +1,7 @@
 DNS Service Discovery for LispWorks
 Version 1.0.0
 
+
 This library is a Common Lisp wrapper around the DNS-SD C API.
 
 For an introduction to DNS Service Discovery:
@@ -21,4 +22,4 @@ The C API Reference can be found here:
 https://developer.apple.com/library/mac/#DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html
 
 Feedback and suggestions, please contact:
-Camille Troillard <ct@wildora.com>
+Camille Troillard <camille@osculator.net>
