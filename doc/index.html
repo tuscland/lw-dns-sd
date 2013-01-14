@@ -1,10 +1,10 @@
 <html> 
 
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <link rel='stylesheet' type='text/css' href='style.css'>
-  <title>DNS Service Discovery for LispWorks</title>
-</head>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel='stylesheet' type='text/css' href='style.css' />
+    <title>DNS Service Discovery for LispWorks</title>
+  </head>
 
 <body>
 
@@ -13,96 +13,91 @@
 
 <p>This library is a Common Lisp wrapper around the DNS-SD C API.</p>
 
-<p>It is available under the <a
- href="http://www.apache.org/licenses/LICENSE-2.0">Apache License
- version 2.0</a>.  The latest version is 1.0.0, released on January
- 11th, 2013. Feedback and suggestions are welcome, please contact:
- Camille Troillard &lt;<a
- href="mailto:ct@wildora.com">ct@wildora.com</a>&gt;.</p>
+<p>The latest version is 1.0.0, released on January 11th, 2013. Feedback and suggestions are welcome, please contact: Camille Troillard &lt;<a href="mailto:ct@wildora.com">ct@wildora.com</a>&gt;.</p>
 
-<p>Download shortcut: <a
- href="http://www.osculator.net/lisp/dns-sd_1.0.0.zip">http://www.osculator.net/lisp/dns-sd_1.0.0.zip</a>.</p>
+<p>Download shortcut: <a href="http://www.osculator.net/lisp/dns-sd_1.0.0.zip">http://www.osculator.net/lisp/dns-sd_1.0.0.zip</a>.</p>
 
 
- <h2><a name="contents">Contents</a></h2>
+<h2><a name="contents">Contents</a></h2>
 <ul>
+  <li><a href="#legal">Legal</a></li>
   <li><a href="#installation">Installation</a></li>
-  <li><a href="#testing">Testing</a></li>
+  <li><a href="#testing">Testing &amp; Examples</a></li>
   <li><a href="#overview">Overview</a></li>
-  <li><a href="#main-api">Main API</a>
+  <li><a href="#dns-sd-operations">DNS-SD Operations</a>
     <ul>
-    <li><a href="#register"><code>register</code></a></li>
-    <li><a href="#enumerate-domains"><code>enumerate-domains</code></a></li>
-    <li><a href="#browse"><code>browse</code></a></li>
-    <li><a href="#resolve"><code>resolve</code></a></li>
-    <li><a href="#get-addr-info"><code>get-addr-info</code></a></li>
-    <li><a href="#nat-port-mapping-create"><code>nat-port-mapping-create</code></a></li>
-    <li><a href="#query-record"><code>query-record</code></a></li>
-    <li><a href="#add-record"><code>add-record</code></a></li>
-    <li><a href="#update-record"><code>update-record</code></a></li>
-    <li><a href="#remove-record"><code>remove-record</code></a></li>
-    <li><a href="#create-connection"><code>create-connection</code></a></li>
-    <li><a href="#register-record"><code>register-record</code></a></li>
-    <li><a href="#reconfirm-record"><code>reconfirm-record</code></a></li>
+      <li><a href="#register"><code>register</code></a></li>
+      <li><a href="#enumerate-domains"><code>enumerate-domains</code></a></li>
+      <li><a href="#browse"><code>browse</code></a></li>
+      <li><a href="#resolve"><code>resolve</code></a></li>
+      <li><a href="#get-addr-info"><code>get-addr-info</code></a></li>
+      <li><a href="#nat-port-mapping-create"><code>nat-port-mapping-create</code></a></li>
+      <li><a href="#query-record"><code>query-record</code></a></li>
+      <li><a href="#add-record"><code>add-record</code></a></li>
+      <li><a href="#update-record"><code>update-record</code></a></li>
+      <li><a href="#remove-record"><code>remove-record</code></a></li>
+      <li><a href="#create-connection"><code>create-connection</code></a></li>
+      <li><a href="#register-record"><code>register-record</code></a></li>
+      <li><a href="#reconfirm-record"><code>reconfirm-record</code></a></li>
     </ul>
   </li>
   <li><a href="#operations">Operations</a>
     <ul>
-    <li><a href="#wait-for-result"><code>wait-for-result</code></a></li>
-    <li><a href="#default-timeout"><code>*default-result-timeout*</code></a></li>
-    <li><a href="#cancel"><code>cancel</code></a></li>
+      <li><a href="#wait-for-result"><code>wait-for-result</code></a></li>
+      <li><a href="#default-timeout"><code>*default-result-timeout*</code></a></li>
+      <li><a href="#cancel"><code>cancel</code></a></li>
     </ul>
   </li>
   <li><a href="#results">Results</a>
     <ul>
-    <li><a href="#result-more-coming-p"><code>result-more-coming-p</code></a></li>
-    <li><a href="#result-values"><code>result-properties</code></a></li>
-    <li><a href="#result-value"><code>result-property</code></a></li>
+      <li><a href="#result-more-coming-p"><code>result-more-coming-p</code></a></li>
+      <li><a href="#result-values"><code>result-properties</code></a></li>
+      <li><a href="#result-value"><code>result-property</code></a></li>
     </ul>
   </li>
   <li><a href="#dispatch">Dispatch</a>
     <ul>
-    <li><a href="#dispatch-running-p"><code>dispatcher-running-p</code></a></li>
-    <li><a href="#start-dispatch"><code>dispatcher-start</code></a></li>
-    <li><a href="#stop-dispatch"><code>dispatcher-stop</code></a></li>
+      <li><a href="#dispatch-running-p"><code>dispatcher-running-p</code></a></li>
+      <li><a href="#start-dispatch"><code>dispatcher-start</code></a></li>
+      <li><a href="#stop-dispatch"><code>dispatcher-stop</code></a></li>
     </ul>
   </li>
   <li><a href="#if-name">Network interface name to index</a>
     <ul>
-    <li><a href="#if-index-to-name"><code>if-index-to-name</code></a></li>
-    <li><a href="#if-name-index"><code>if-name-index</code></a></li>
-    <li><a href="#if-name-to-index"><code>if-name-to-index</code></a></li>
+      <li><a href="#if-name-index"><code>if-name-index</code></a></li>
+      <li><a href="#if-index-to-name"><code>if-index-to-name</code></a></li>
+      <li><a href="#if-name-to-index"><code>if-name-to-index</code></a></li>
     </ul>
   </li>
   <li><a href="#errors">Errors</a>
     <ul>
-    <li><a href="#dns-sd-error"><code>dns-sd-error</code></a></li>
-    <li><a href="#result-error"><code>result-error</code></a></li>
-    <li><a href="#result-error-code"><code>result-error-code</code></a></li>
-    <li><a href="#timeout-error"><code>result-timeout-error</code></a></li>
+      <li><a href="#dns-sd-error"><code>dns-sd-error</code></a></li>
+      <li><a href="#result-error"><code>result-error</code></a></li>
+      <li><a href="#timeout-error"><code>result-timeout-error</code></a></li>
     </ul>
   </li>
   <li><a href="#utility">Utility functions</a>
     <ul>
-    <li><a href="#build-txt-record"><code>build-txt-record</code></a></li>
-    <li><a href="#parse-txt-record"><code>parse-txt-record</code></a></li>
-    <li><a href="#bytes-to-string"><code>bytes-to-string</code></a></li>
-    <li><a href="#string-to-bytes"><code>string-to-bytes</code></a></li>
-    <li><a href="#construct-full-name"><code>construct-full-name</code></a></li>
+      <li><a href="#daemon-version"><code>daemon-version</code></a></li>
+      <li><a href="#build-txt-record"><code>build-txt-record</code></a></li>
+      <li><a href="#parse-txt-record"><code>parse-txt-record</code></a></li>
+      <li><a href="#bytes-to-string"><code>bytes-to-string</code></a></li>
+      <li><a href="#string-to-bytes"><code>string-to-bytes</code></a></li>
+      <li><a href="#construct-full-name"><code>construct-full-name</code></a></li>
     </ul>
   </li>
   <li><a href="#ack">Acknowledgements</a></li>
 </ul>
 
 
-<h3><a name="installation">Installation</a></h3>
+<h3><a name="legal">Legal</a></h3>
 
-<p>DNS-SD for LispWorks been tested under the following implementations:
-<ul>
-  <li>LispWorks Professional 32 bits for Mac OS X,</li>
-  <li>LispWorks Professional 32 bits for Windows,</li>
-  <li>LispWorks Enterprise 64 bits for Mac OS X.</li>
-</ul></p>
+<p>Code and documentation licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License version 2.0</a>.</p>
+<p>Original version of this documentation &copy; 2012 Apple Inc. All Rights Reserved.</p>
+<p>Lisp adaption and additions &copy; 2013 Camille Troillard. All Rights Reserved.</p>
+
+
+<h3><a name="installation">Installation</a></h3>
 
 <p>DNS-SD has no dependencies.  Once downloaded, extract the files from
 the zip archive and load the file defsystem.lisp in LispWorks:</p>
@@ -126,7 +121,7 @@ CL-USER 3 &gt; <b>(compile-system :dns-sd :load t)</b>
 (:DNS-SD)</i></pre>
 
 
-<h3><a class=none name="testing">Testing</a></h3>
+<h3><a class=none name="testing">Testing &amp; Examples</a></h3>
 
 <p>To run the test suite, load the DNS-SD-TESTS system and call
 <code>(dns-sd-tests:run-tests)</code>:</p>
@@ -157,14 +152,26 @@ TEST-TXT-RECORD
 TEST-RECORD-CRUD
 T</i></pre>
 
+<p>DNS-SD for LispWorks been tested under the following setups:
+<ul>
+  <li>LispWorks Professional 32 bits for Mac OS X,</li>
+  <li>LispWorks Professional 32 bits for Windows,</li>
+  <li>LispWorks Enterprise 64 bits for Mac OS X.</li>
+</ul></p>
+
+<p>On Mac OS X, the library has been tested on versions from 10.5.8 to 10.8.2, on machines with Intel processors, 32 and 64 bits executables. On Windows, the library has been tested under Windows 8 with a 32 bits executable.</p>
+
+<p>At this time, there is one example demonstrating the use of asynchronous callbacks in the file "examples/browse.lisp".</p>
+
+
 <h3><a name="overview">Overview</a></h3>
 
 <p>Using DNS Service Discovery you will be able to:
 <ul>
-  <li>register, browse and resolve for services on the network,</li>
-  <li>get IP addresses for host name in a portable way,</li>
-  <li>create, query, update and remove DNS resource records,</li>
-  <li>create NAT port mappings, or get the NAT's external IP address.</li>
+  <li>Register, Browse and Resolve services on the network,</li>
+  <li>Get IP addresses for host name in a portable way,</li>
+  <li>Create, query, update and remove DNS resource records,</li>
+  <li>Create NAT port mappings, or get the NAT's external IP address.</li>
 </ul></p>
 
 <p>Get an introduction on <a href="https://developer.apple.com/library/mac/#documentation/Networking/Conceptual/dns_discovery_api/Introduction.html">DNS Service Discovery</a>.</p>
@@ -172,11 +179,29 @@ T</i></pre>
 <p>The C API Reference is an important source of information and <a
   href="https://developer.apple.com/library/mac/#DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html">can be found here</a>.</p>
 
+<p>The original C library is well covered, but with some limitations:
+<ul>
+  <li>The following flags are not implemented at this moment:
+    <ul>
+      <li>kDNSServiceFlagsAllowRemoteQuery</li>
+      <li>kDNSServiceFlagsReturnIntermediates</li>
+      <li>kDNSServiceFlagsNonBrowsable</li>
+      <li>kDNSServiceFlagsShareConnection</li>
+      <li>kDNSServiceFlagsSuppressUnusable</li>
+      <li>kDNSServiceFlagsTimeout</li>
+      <li>kDNSServiceFlagsIncludeP2P</li>
+      <li>kDNSServiceFlagsWakeOnResolve</li>
+      <li>kDNSServiceFlagsBackgroundTrafficClass</li>
+      <li>kDNSServiceFlagsIncludeAWDL</li>
+    </ul>
+  </li>
+  <li>The TXTRecord APIs are not implemented as foreign function calls because Lisp association-lists are used to build TXT records.</li>
+</ul></p>
 
-<h3><a name="main-api">Main API</a></h3>
 
-Functions of the Main API have their counterparts in the DNS-SD C API.
+<h3><a name="dns-sd-operations">DNS-SD Operations</a></h3>
 
+Functions in this sections are similar to their respective counterparts in the DNS-SD C API.
 
 <div class='item'>
   <div class='type'><a name='register'>[Function]</a></div>
@@ -202,8 +227,16 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
     <p><var>port</var> specifies the port on which the service accepts connections.  Pass 0 for a "placeholder" service (i.e. a service that will not be discovered by browsing, but will cause a name conflict if another client tries to register that same name).  Most clients will not use placeholder services.</p>
     <p><var>type</var> is the service type followed by the protocol, separated by a dot (e.g. "_ftp._tcp").  The service type must be an underscore, followed by 1-15 characters, which may be letters, digits, or hyphens.  The transport protocol must be "_tcp" or "_udp".</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
-    <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to register on all interfaces.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>register</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:PRESENCE</code> &mdash; <code class="kw">:ADD</code> is used when the service has been successfully published, and <code class="kw">:REMOVE</code> when the service is about to be renamed in case of conflict resolution.</li>
+        <li><code class="kw">:NAME</code> &mdash; the service name registered (if the application did not specify a name in <tt>register</tt>, this indicates what name was automatically chosen).</li>
+        <li><code class="kw">:TYPE</code> &mdash; the type of service registered, as it was passed to the callout.</li>
+        <li><code class="kw">:DOMAIN</code> &mdash; the domain on which the service was registered (if the application did not specify a domain in <tt>register</tt>, this indicates the default domain on which the service was registered).</li>
+      </ul>
+    </p>
+    <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to register on all interfaces.</p>
     <p><var>name</var>, if non-nil, specifies the service name to be registered.  Most applications will not specify a name, in which case the computer name is used (this name is communicated to the client via the callback).</p>
     <p><var>domain</var>, if non-nil, specifies the domain on which to advertise the service.  Most applications will not specify a domain, instead automatically registering in the default domain(s).</p>
     <p><var>host</var>, if non-nil, specifies the SRV target host name.  Most applications will not specify a host, instead automatically using the machine's default host name(s).  Note that specifying a non-nil host does NOT create an address record for that host - the application is responsible for ensuring that the appropriate address record exists, or creating it via <a href="#register-record"><tt>register-record</tt></a>.</p>
@@ -229,7 +262,15 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
   <blockquote class='description'>
     <p>Schedules a domains enumeration operation.</p>
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>enumerate-domains</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:PRESENCE</code> &mdash; <code class="kw">:ADD</code> or <code class="kw">:REMOVE</code> depending on domains being found or lost.</li>
+        <li><code class="kw">:DEFAULTP</code> &mdash; is <tt>t</tt> if the domain is the default domain.</li>
+        <li><code class="kw">:INTERFACE-INDEX</code> &mdash; the interface on which the domain exists. (The index for a given interface is determined via the <a href="#if-name"><tt>if-name-to-index</tt></a> family of calls.)</li>
+        <li><code class="kw">:DOMAIN</code> &mdash; the name of the domain.</li>
+      </ul>
+    </p>
     <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to enumerate domains on all interfaces.</p>
     <p><var>domains</var> specifies the enumerated domains.  Possible values are <code class='kw'>:BROWSE-DOMAINS</code> (the default value) or <code class='kw'>:REGISTRATION-DOMAINS</code>.</p>
     <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW7">DNSServiceEnumerateDomains</a>.</p>
@@ -254,7 +295,16 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p>Schedules a browse operation.</p>
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
     <p><var>type</var> is the service type being browsed for followed by the protocol, separated by a dot (e.g. "_ftp._tcp"). The transport protocol must be "_tcp" or "_udp". A client may optionally specify a single subtype to perform filtered browsing: e.g. browsing for "_primarytype._tcp,_subtype" will discover only those instances of "_primarytype._tcp" that were registered specifying "_subtype" in their list of registered subtypes.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>browse</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:PRESENCE</code> &mdash; <code class="kw">:ADD</code> or <code class="kw">:REMOVE</code> depending on services being found or lost.</li>
+        <li><code class="kw">:INTERFACE-INDEX</code> &mdash; the interface on which the service is advertised. This index should be passed to <a href="#resolve"><tt>resolve</tt></a> when resolving the service.</li>
+        <li><code class="kw">:NAME</code> &mdash; the discovered service name. This name should be displayed to the user, and stored for subsequent use in the <a href="#resolve"><tt>resolve</tt></a> call.</li>
+        <li><code class="kw">:TYPE</code> &mdash; the service type, which is usually (but not always) the same as was passed to <tt>browse</tt>.  One case where the discovered service type may not be the same as the requested service type is when using subtypes: The client may want to browse for only those ftp servers that allow anonymous connections. The client will pass the string "_ftp._tcp,_anon" to <tt>browse</tt>, but the type of the service that's discovered is simply "_ftp._tcp". The regtype for each discovered service instance should be stored along with the name, so that it can be passed to <a href="#resolve"><tt>resolve</tt></a> when the service is later resolved.</li>
+        <li><code class="kw">:DOMAIN</code> &mdash; the domain of the discovered service instance.  This may or may not be the same as the domain that was passed to <tt>browse</tt>.  The domain for each discovered service instance should be stored along with the name, so that it can be passed to <a href="#resolve"><tt>resolve</tt></a> when the service is later resolved.</li>
+      </ul>
+    </p>
     <p>If not nil, <var>interface-index</var> specifies the interface on which to look for domains. (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.) Most applications will pass nil to browse on all interfaces.</p>
     <p><var>domain</var>, if non-nil, specifies the domain on which to advertise the service.  Most applications will not specify a domain, instead automatically registering in the default domain(s).</p>
     <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW4">DNSServiceBrowse</a>.</p>
@@ -281,7 +331,16 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p>Schedules a resolve operation.</p>
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>   
     <p><var>name</var>, <var>type</var> and <var>domain</var> must be specified as the values given by the result of a <a href="#browse"><tt>browse</tt></a> operation.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>resolve</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:INTERFACE-INDEX</code> &mdash; the interface on which the service was resolved.</li>
+        <li><code class="kw">:FULL-NAME</code> &mdash; the full service domain name, in the form <code>&lt;servicename&gt;.&lt;protocol&gt;.&lt;domain&gt;</code>.</li>
+        <li><code class="kw">:HOSTNAME</code> &mdash; the target hostname of the machine providing the service.</li>
+        <li><code class="kw">:PORT</code> &mdash; the port on which connections are accepted for this service.</li>
+        <li><code class="kw">:TXT-RECORD</code> &mdash; the service's primary txt record, as an association-list of strings.</li>
+      </ul>
+    </p>
     <p><var>interface-index</var> specifies the interface on which to resolve a service. If this <tt>resolve</tt> call is as a result of a currently active <tt>browse</tt> operation, then the <var>interface-index</var> should be the index reported in the result. If this resolve call is using information previously saved (e.g. in a preference file) for later use, then use <var>interface-index</var> nil, because the desired service may now be reachable via a different physical interface.</p>
     <p>When <var>broadcasting</var> is <code class='kw'>:FORCE-MULTICAST</code> the query is performed with a link-local mDNS query, even if the name is an apparently non-local name (i.e. a name not ending in ".local.").</p>
     <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW19">DNSServiceResolve</a>.</p>
@@ -307,7 +366,16 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p>Schedules an IP address resolution operation.</p>
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>   
     <p><var>hostname</var>, specifies the fully qualified domain name of the host to be queried for, that should be the resulting value of a <a href="#resolve">resolve</a> operation.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>get-addr-info</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:PRESENCE</code> &mdash; <code class="kw">:ADD</code> on successul address resolutions.</li>
+        <li><code class="kw">:INTERFACE-INDEX</code> &mdash; the interface to which the answers pertain.</li>
+        <li><code class="kw">:HOSTNAME</code> &mdash; the fully qualified domain name of the host to be queried for.</li>
+        <li><code class="kw">:ADDRESS</code> &mdash; IPv4 or IPv6 address.</li>
+        <li><code class="kw">:TTL</code> &mdash; if the client wishes to cache the result for performance reasons, the TTL indicates how long the client may legitimately hold onto this result, in seconds. After the TTL expires, the client should consider the result no longer valid, and if it requires this data again, it should be re-fetched with a new query. Of course, this only applies to clients that cancel the asynchronous operation when they get a result. Clients that leave the asynchronous operation running can safely assume that the data remains valid until they get another callback telling them otherwise.</li>
+      </ul>
+    </p>
     <p><var>interface-index</var> specifies the interface on which to issue the query.  Passing nil causes the query to be sent on all active interfaces via Multicast or the primary interface via Unicast.</p>
     <p><var>protocols</var> must be nil or a list of keywords containing <code class='kw'>:IPV4</code> to look up for IPv4 addresses, <code class='kw'>:IPV6</code> to look up for IPv6 addresses, or both keywords.<br />
     If neither flag is set, the system will apply an intelligent heuristic, which is (currently) that it will attempt to look up both, except: if <var>hostname</var> is a wide-area unicast DNS hostname (i.e. not a ".local." name) but this host has no routable IPv6 address, then the call will not try to look up IPv6 addresses for <var>hostname</var>, since any addresses it found would be unlikely to be of any use anyway.  Similarly, if this host has no routable IPv4 address, the call will not try to look up IPv4 addresses for <var>hostname</var>.</p>
@@ -336,7 +404,17 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p>Schedules a NAT port mapping operation.  The NAT port mapping exists for as long as the operation in pending (i.e. not cancelled).</p>
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>   
     <p><var>internal-port</var> specifies the port number on the local machine which is listening for packets.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>nat-port-mapping-create</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:INTERFACE-INDEX</code> &mdash; the interface through which the NAT gateway is reached.</li>
+        <li><code class="kw">:EXTERNAL-ADDRESS</code> &mdash; IPv4 address string.</li>
+        <li><code class="kw">:PROTOCOLS</code> &mdash; the list of protocols used : <code class="kw">:UDP</code>, <code class="kw">:TCP</code> or both.</li>
+        <li><code class="kw">:INTERNAL-PORT</code> &mdash; the port on the local machine that was mapped.</li>
+        <li><code class="kw">:EXTERNAL-PORT</code> &mdash; the actual external port in the NAT gateway that was mapped.  This is likely to be different than the requested external port.</li>
+        <li><code class="kw">:TTL</code> &mdash; the lifetime of the NAT port mapping created on the gateway.  This controls how quickly stale mappings will be garbage-collected if the client machine crashes, suffers a power failure, is disconnected from the network, or suffers some other unfortunate demise which causes it to vanish without explicitly removing its NAT port mapping.  It's possible that the ttl value will differ from the requested ttl value.</li>
+      </ul>
+    </p>
     <p><var>interface-index</var> specifies the interface on which to create port mappings in a NAT gateway.  Passing 0 causes the port mapping request to be sent on the primary interface.</p>
     <p><var>external-port</var> specifies the requested external port in the NAT gateway that you would like to map to the internal port.  Pass 0 if you don't care which external port is chosen for you.</p>
     <p><var>protocols</var> must be nil or a list of keywords containing <code class='kw'>:UDP</code>, <code class='kw'>:TCP</code>, or both keywords.  The local listening port number must also be specified in the <var>internal-port</var> parameter.  To just discover the NAT gateway's external IP address, pass 0 for <var>internal-port</var>, and leave the default value nil for <var>protocols</var>, <var>external-port</var> and <var>ttl</var>.</p>
@@ -367,7 +445,18 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p><var>full-name</var> is the full domain name of the resource record to be queried for.  The function <a href="#construct-full-name"><tt>construct-full-name</tt></a> can be used to help format this string.</p>
     <p><var>rrtype</var> is a keyword representing the type of the record.  Valid keywords are:
     <tt>:A :NS :MD :MF :CNAME :SOA :MB :MG :MR :NULL :WKS :PTR :HINFO :MINFO :MX :TXT :RP :AFSDB :X25 :ISDN :RT :NSAP :NSAP_PTR :SIG :KEY :PX :GPOS :AAAA :LOC :NXT :EID :NIMLOC :SRV :ATMA :NAPTR :KX :CERT :A6 :DNAME :SINK :OPT :APL :DS :SSHFP :IPSECKEY :RRSIG :NSEC :DNSKEY :DHCID :NSEC3 :NSEC3PARAM :HIP :SPF :UINFO :UID :GID :UNSPEC :TKEY :TSIG :IXFR :AXFR :MAILB :MAILA :ANY</tt>.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      For <tt>query-record</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:PRESENCE</code> &mdash; <code class="kw">:ADD</code> on successul query replies, <code class="kw">:REMOVE</code> for PTR records with a 0 ttl, i.e. "Remove" events.</li>
+        <li><code class="kw">:INTERFACE-INDEX</code> &mdash; the interface on which the query was resolved (the index for a given interface is determined via the <a href="#if-name"><tt>if-name-to-index</tt></a> family of calls).</li>
+        <li><code class="kw">:FULL-NAME</code> &mdash; the resource record's full domain name.</li>
+        <li><code class="kw">:RRTYPE</code> &mdash; the resource record's type.  (e.g. <code class="kw">:PTR</code>, <code class="kw">:SRV</code>, etc.)</li>
+        <li><code class="kw">:RRCLASS</code> &mdash; the class of the resource record.  (usually <code class="kw">:IN</code>.)</li>
+        <li><code class="kw">:RDATA</code> &mdash; the raw rdata of the resource record, as an array of <code>(unsigned byte)</code> elements.</li>
+        <li><code class="kw">:TTL</code> &mdash; if the client wishes to cache the result for performance reasons, the TTL indicates how long the client may legitimately hold onto this result, in seconds. After the TTL expires, the client should consider the result no longer valid, and if it requires this data again, it should be re-fetched with a new query. Of course, this only applies to clients that cancel the asynchronous operation when they get a result. Clients that leave the asynchronous operation running can safely assume that the data remains valid until they get another callback telling them otherwise.</li>
+      </ul>
+    </p>
     <p><var>interface-index</var>, if non-nil, specifies the interface on which to issue the query (the index for a given interface is determined via the <a href="#if-name-to-index"><tt>if-name-to-index</tt></a> family of calls.)  Passing nil causes the name to be queried for on all interfaces.</p>
     <p><var>rrclass</var> has only one value at this moment, <tt>:IN</tt>.</p>
     <p><var>broadcasting</var> can be <code class='kw'>:FORCE-MULTICAST</code> or <code class='kw'>:LONG-LIVED-QUERY</code>.  Use <code class='kw'>:LONG-LIVED-QUERY</code> to create a "long-lived" unicast query to a unicast DNS server that implements the protocol; this option has no effect on link-local multicast queries.</p>
@@ -463,7 +552,8 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
   <blockquote class='description'>
     <p>Create a connection to the daemon allowing efficient registration of multiple individual records.</p>
     <p>Signals a <code>dns-sd-error</code> if an error immediately occurs.</p>
-    <p>When <var>callback</var> is specified, the operation is ran asynchronously and results are delivered from the dispatcher process to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var>.</p>
+    <p>When <var>callback</var> is specified, the operation is run asynchronously and results are delivered to the callback.  <var>callback</var> must be a function of two arguments: <var>operation</var> and <var>result</var> where <var>operation</var> is the object returned by the callout, and <var>result</var> is either a <a href="#results"><tt>result</tt></a> object, or an error if an error occurred in the dispatch process.<br />
+      See <a href="#register-record"><tt>register-record</tt></a> for more information on the results of the callback used with this function.</p>
     <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW6">DNSServiceCreateConnection</a>.</p>
   </blockquote>
 </div>
@@ -498,6 +588,11 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
     <p><var>rrclass</var> is the class of the resource record, currently supported value is <tt>:IN</tt></p>
     <p><var>identity</var> when non nil, can have the keyword value <tt>:SHARED</tt> or <tt>:UNIQUE</tt>.  <tt>:SHARED</tt> indicates that there may be multiple records with this name on the network (e.g. PTR records).  <tt>:UNIQUE</tt> indicates that the record's name is to be unique on the network (e.g. SRV records).</p>
     <p><var>ttl</var> specifies the time to live of the resource record, in seconds.  Most clients should pass 0 to indicate that the system should select a sensible default value.</p>
+    <p>Callback replies are made on the callback specified when the operation was created, using <a href="#create-connection"><tt>create-connection</tt></a>.  For <tt>register-record</tt>, the <var>result</var> object contains the following values:
+      <ul>
+        <li><code class="kw">:RECORD-REF</code> &mdash; the <tt>record-ref</tt> object that can be used in other functions operating on records (e.g. <a href="#update-record"><tt>update-record</tt></a>.</li>
+      </ul>
+</p>
     <p>See <a href="https://developer.apple.com/library/mac/DOCUMENTATION/Networking/Reference/DNSServiceDiscovery_CRef/Reference/reference.html#//apple_ref/doc/uid/TP40002994-CHdnssdhFunctions-SW17">DNSServiceRegisterRecord</a>.</p>
   </blockquote>
 </div>
@@ -668,7 +763,166 @@ Functions of the Main API have their counterparts in the DNS-SD C API.
   </div>
 
   <blockquote class='description'>
-    <p>Sycnrhonously stop the dispatch process and cancels every pending operation.</p>
+    <p>Synchronously stop the dispatch process and cancels every pending operation.</p>
+  </blockquote>
+</div>
+
+
+<h3><a name="if-name">Network interface name to index</a></h3>
+
+<div class='item'>
+  <div class='type'><a name='if-name-index'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>if-name-index</code>
+    <span class='result'>➔ <var>alist</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Returns an association-list of <tt>(interface-index . interface-name)</tt> pairs.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='if-index-to-name'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>if-index-to-name</code>
+    <span class='args'>
+      <var>index</var>
+    </span>
+    <span class='result'>➔ <var>name</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>For a given interface index, returns its name.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='if-name-to-index'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>if-name-to-index</code>
+    <span class='args'>
+      <var>name</var>
+    </span>
+    <span class='result'>➔ <var>index</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>For a given interface name, returns its index.</p>
+  </blockquote>
+</div>
+
+<h3><a name="errors">Errors</a></h3>
+
+<div class='item'>
+  <div class='type'><a name='dns-sd-error'>[Error]</a></div>
+  <div class='signature'>
+    <code class='name'>dns-sd-error</code>
+    <code class='superclass'>(error)</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>All errors specific to DNS-SD are of this type.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='result-error'>[Error]</a></div>
+  <div class='signature'>
+    <code class='name'>result-error</code>
+    <code class='superclass'>(dns-sd-error)</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Errors occuring in operations callback are of this type.  Use the reader function <tt>result-error-code</tt> to get the original error code.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='timeout-error'>[Error]</a></div>
+  <div class='signature'>
+    <code class='name'>timeout-error</code>
+    <code class='superclass'>(dns-sd-error)</code>
+  </div>
+
+  <blockquote class='description'>
+    <p>Functions accepting a <code class="kw">:TIMEOUT</code> keyword argument will raise an error of this type once the timeout has been reached.</p>
+  </blockquote>
+</div>
+
+<h3><a name="utility">Utility functions</a></h3>
+
+<div class='item'>
+  <div class='type'><a name='daemon-version'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>daemon-version</code>
+    <span class='result'>➔ <var>integer</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Returns the version of the mDNS daemon running on the local machine.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='build-txt-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>build-txt-record</code>
+    <span class='args'>
+      <var>alist</var>
+    </span>
+    <span class='result'>➔ <var>array</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Build a TXT record byte array from an association-list of strings key-pairs.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='parse-txt-record'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>parse-txt-record</code>
+    <span class='args'>
+      <var>array</var>
+    </span>
+    <span class='result'>➔ <var>alist</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Parse an array of bytes containing TXT record data, and returns an association-list of strings key-pairs.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='string-to-bytes'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>string-to-bytes</code>
+    <span class='args'>
+      <var>string</var>
+    </span>
+    <span class='result'>➔ <var>array</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Encodes <var>string</var> so it can be used in record data.</p>
+  </blockquote>
+</div>
+
+<div class='item'>
+  <div class='type'><a name='construct-full-name'>[Function]</a></div>
+  <div class='signature'>
+    <code class='name'>construct-full-name</code>
+    <span class='args'>
+      <var>service</var>
+      <var>type</var>
+      <var>domain</var>
+    </span>
+    <span class='result'>➔ <var>string</var></span>
+  </div>
+
+  <blockquote class='description'>
+    <p>Constructs a string from the service name, service type and domain name that is compliant with DNS-SD way of encoding full-names.</p>
   </blockquote>
 </div>
 

@@ -7,10 +7,10 @@ For an introduction to DNS Service Discovery:
 https://developer.apple.com/library/mac/#documentation/Networking/Conceptual/dns_discovery_api/Introduction.html
 
 Using the DNS Service Discovery you will be able to:
-- register, browse and resolve DNS-SD services,
-- get IP addresses for host name in a portable way,
-- create, query, update and remove DNS resource records,
-- create NAT port mappings, or get the NAT's external IP address.
+- Register, Browse and Resolve DNS-SD services,
+- Get IP addresses for host name in a portable way,
+- Create, query, update and remove DNS resource records,
+- Create NAT port mappings, or get the NAT's external IP address.
 
 The library has been tested under the following implementations:
 - LispWorks Professional 32 bits for Mac OS X,
