@@ -48,13 +48,13 @@
                       (:foreign-name "sockaddr"))
   (sa_len :uint8)
   (sa_family :uint8)
-  (sa_data (:pointer :char)))
+  (sa_data (:c-array :uint8)))
 
 #+win32
 (fli:define-c-struct (sockaddr
                       (:foreign-name "sockaddr"))
   (sa_family :uint16)
-  (sa_data (:pointer :char)))
+  (sa_data (:c-array :uint8)))
 
 #+lispworks6.1
 (defun ip-address-from-sockaddr (pointer)
