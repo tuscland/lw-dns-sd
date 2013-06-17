@@ -77,8 +77,8 @@
                            *operations*
                            :wait-reason (dispatch-wait-reason)
                            :wait-function #'(lambda ()
-                                              #+lispworks6.1 (mp:mailbox-not-empty-p mailbox)
-                                              #-lispworks6.1 (mp:mailbox-peek mailbox)))
+                                              (not (null
+                                                    (mp:mailbox-peek mailbox)))))
         :do (with-simple-restart (abort "Return to event loop.")
               (if operation
                   (handler-case (process-result operation)
