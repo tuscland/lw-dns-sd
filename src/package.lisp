@@ -80,6 +80,3 @@
    "TIMEOUT-ERROR"
    "RESULT-ERROR"
    "RESULT-ERROR-CODE"))
-(defpackage #:com.wildora.dns-sd-user
-  (:nicknames #:dns-sd-user)
-  (:use #:cl #:dns-sd))
