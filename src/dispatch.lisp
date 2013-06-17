@@ -32,7 +32,7 @@
   (when (dispatch-running-p)
     (error "DNS-SD Dispatch is already started."))
 
-  #+win32 (fli:register-module "dnssd")
+  (fli:register-module "dnssd")
   (assert (> (daemon-version) 0))
 
   (setf *process*
