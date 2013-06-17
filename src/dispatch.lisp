@@ -18,7 +18,7 @@
 ;;; Event queue specialized for DNS-SD events.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 (defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)

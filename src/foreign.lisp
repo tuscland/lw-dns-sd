@@ -18,7 +18,7 @@
 ;;; Low-level foreign language interface.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 (fli:define-c-typedef service-ref
   :pointer)

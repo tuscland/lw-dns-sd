@@ -1,5 +1,5 @@
 DNS Service Discovery for LispWorks
-Version 1.0.0
+Version 1.0.1
 
 
 This library is a Common Lisp wrapper around the DNS-SD C API.

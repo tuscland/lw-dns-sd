@@ -18,7 +18,7 @@
 ;;; Base errors definitions.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 (define-condition dns-sd-error (error)
   ()

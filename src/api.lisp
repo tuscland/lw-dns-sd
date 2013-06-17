@@ -18,7 +18,7 @@
 ;;; Main public API.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 
 (defun register (port type
@@ -97,8 +97,7 @@
     (dispatch :handle (fli:dereference pointer)
               :callback callback)))
 
-(defun register-record (operation
-                        full-name rrtype rdata
+(defun register-record (operation full-name rrtype rdata
                         &key interface-index
                              (rrclass :IN)
                              identity

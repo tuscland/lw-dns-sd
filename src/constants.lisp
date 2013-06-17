@@ -18,7 +18,7 @@
 ;;; Constants and keywords used throughout the system.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 (defvar *library-version* "1.0.0")
 (defparameter *default-timeout* 60)

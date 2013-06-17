@@ -18,7 +18,7 @@
 ;;; Network interface name to index.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)

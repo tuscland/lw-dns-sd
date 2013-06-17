@@ -18,7 +18,7 @@
 ;;; High-level implementation of foreign language interfaces.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 ;;;;
 ;;;; Foreign array support

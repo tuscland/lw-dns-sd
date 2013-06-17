@@ -25,7 +25,7 @@
 ;;      (CL-USER::BROWSER-EXAMPLE)
 
 (load (current-pathname "../defsystem"))
-(compile-system :dns-sd :load t)
+(compile-system "DNS-SD" :load t)
 
 (defun callback-with-interface (interface function)
   (lambda (operation result)

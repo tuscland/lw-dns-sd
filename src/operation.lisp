@@ -20,7 +20,7 @@
 ;;; in an operation waiting in the dispatch queue.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 (defun daemon-version ()
   (fli:with-dynamic-foreign-objects ((result :uint32)

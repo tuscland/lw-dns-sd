@@ -20,7 +20,7 @@
 ;;; call OPERATION-NEXT-RESULT.
 
 
-(in-package #:com.wildora.dns-sd)
+(in-package "COM.WILDORA.DNS-SD")
 
 (defclass result ()
   ((values

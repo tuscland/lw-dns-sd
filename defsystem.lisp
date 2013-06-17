@@ -16,9 +16,9 @@
 ;;; governing permissions and limitations under the License.
 
 
-(in-package #:cl-user)
+(in-package "CL-USER")
 
-(defsystem #:dns-sd
+(defsystem "DNS-SD"
   (:default-pathname "src")
   :members ("package"
             "if-name"
@@ -47,7 +47,7 @@
            (:requires
             (:load "errors")))))
 
-(defsystem #:dns-sd-tests
+(defsystem "DNS-SD-TESTS"
   (:default-pathname "tests")
   :members (("dns-sd" :type :system)
             "package"

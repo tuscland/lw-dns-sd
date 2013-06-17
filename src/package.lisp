@@ -15,72 +15,71 @@
 ;;; express or implied.  See the License for the specific language
 ;;; governing permissions and limitations under the License.
 
+(in-package "CL-USER")
 
 (require "comm")
 
-(defpackage #:com.wildora.dns-sd
-  (:nicknames #:dns-sd)
+(defpackage "COM.WILDORA.DNS-SD"
+  (:nicknames "DNS-SD")
   (:export
-   #:*library-version*
-   #:*default-timeout*
+   "*DEFAULT-TIMEOUT*"
 
-   #:daemon-version
+   "DAEMON-VERSION"
 
    ;; Main API
-   #:register
-   #:enumerate-domains
-   #:browse
-   #:resolve
-   #:get-addr-info
-   #:query-record
-   #:enumerate-services-types
-   #:nat-port-mapping-create
-   #:add-record
-   #:update-record
-   #:remove-record
-   #:register-record
-   #:reconfirm-record
-   #:create-connection
+   "REGISTER"
+   "ENUMERATE-DOMAINS"
+   "BROWSE"
+   "RESOLVE"
+   "GET-ADDR-INFO"
+   "QUERY-RECORD"
+   "ENUMERATE-SERVICES-TYPES"
+   "NAT-PORT-MAPPING-CREATE"
+   "ADD-RECORD"
+   "UPDATE-RECORD"
+   "REMOVE-RECORD"
+   "REGISTER-RECORD"
+   "RECONFIRM-RECORD"
+   "CREATE-CONNECTION"
 
    ;; Operations
-   #:wait-for-result
-   #:cancel
+   "WAIT-FOR-RESULT"
+   "CANCEL"
 
    ;; Results
-   #:check-result
-   #:result-values
-   #:result-value
-   #:result-more-coming-p
+   "CHECK-RESULT"
+   "RESULT-VALUES"
+   "RESULT-VALUE"
+   "RESULT-MORE-COMING-P"
 
    ;; Dispatch
-   #:start-dispatch
-   #:stop-dispatch
-   #:dispatch-running-p
+   "START-DISPATCH"
+   "STOP-DISPATCH"
+   "DISPATCH-RUNNING-P"
    
-   ;; Network interface name to index
-   #:if-name-to-index
-   #:if-index-to-name
-   #:if-name-index
-   #:+interface-index-any+
-   #:+interface-index-local-only+
-   #:+interface-index-unicast+
-   #:+interface-index-p2p+
+   ;; NETWORK INTERFACE NAME TO INDEX
+   "IF-NAME-TO-INDEX"
+   "IF-INDEX-TO-NAME"
+   "IF-NAME-INDEX"
+   "+INTERFACE-INDEX-ANY+"
+   "+INTERFACE-INDEX-LOCAL-ONLY+"
+   "+INTERFACE-INDEX-UNICAST+"
+   "+INTERFACE-INDEX-P2P+"
 
    ;; Record data handling
-   #:string-to-bytes
-   #:bytes-to-string
-   #:build-txt-record
-   #:parse-txt-record
+   "STRING-TO-BYTES"
+   "BYTES-TO-STRING"
+   "BUILD-TXT-RECORD"
+   "PARSE-TXT-RECORD"
 
    ;; Utility
-   #:construct-full-name
+   "CONSTRUCT-FULL-NAME"
 
-   ;; Errors
-   #:dns-sd-error
-   #:timeout-error
-   #:result-error
-   #:result-error-code))
-
+   ;; ERRORS
+   "DNS-SD-ERROR"
+   "TIMEOUT-ERROR"
+   "RESULT-ERROR"
+   "RESULT-ERROR-CODE"))
 (defpackage #:com.wildora.dns-sd-user
   (:nicknames #:dns-sd-user)
   (:use #:cl #:dns-sd))
