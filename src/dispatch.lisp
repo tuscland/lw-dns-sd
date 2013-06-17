@@ -101,7 +101,8 @@
 
 (defun dispatch-remove-operation (operation removal-callback)
   (dispatch-send
-   `(%remove-operation ,operation ,removal-callback)))
+   `(%remove-operation ,operation ,removal-callback))
+  operation)
 
 
 ;;;;
