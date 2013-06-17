@@ -18,7 +18,7 @@
 
 (in-package "CL-USER")
 
-(defsystem "DNS-SD"
+(defsystem "COM.WILDORA.DNS-SD"
   (:default-pathname "src")
   :members ("package"
             "if-name"
