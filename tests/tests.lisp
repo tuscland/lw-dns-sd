@@ -15,10 +15,10 @@
 ;;; express or implied.  See the License for the specific language
 ;;; governing permissions and limitations under the License.
 
-;;; Test suite for the DNS-SD system.
+;;; Test suite for the COM.WILDORA.DNS-SD system.
 
 
-(in-package #:com.wildora.dns-sd-tests)
+(in-package "COM.WILDORA.DNS-SD-TESTS")
 
 (defparameter *test-service-type* "_test._udp")
 (defparameter *test-service-port* 9999)

@@ -1,4 +1,5 @@
 ;; -*- external-format: utf-8; -*-
+;; Exercing the library in a delivered product.
 
 (in-package "CL-USER")
 

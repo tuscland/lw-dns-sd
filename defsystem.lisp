@@ -47,9 +47,9 @@
            (:requires
             (:load "errors")))))
 
-(defsystem "DNS-SD-TESTS"
+(defsystem "COM.WILDORA.DNS-SD-TESTS"
   (:default-pathname "tests")
-  :members (("dns-sd" :type :system)
+  :members (("COM.WILDORA.DNS-SD" :type :system)
             "package"
             "tests")
   :rules ((:in-order-to :compile :all

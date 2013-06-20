@@ -16,9 +16,10 @@
 ;;; governing permissions and limitations under the License.
 
 
-(in-package #:cl-user)
+(in-package "CL-USER")
 
-(defpackage #:com.wildora.dns-sd-tests
-  (:nicknames #:dns-sd-tests)
-  (:use #:cl #:com.wildora.dns-sd)
-  (:export #:run-tests))
+(defpackage "COM.WILDORA.DNS-SD-TESTS"
+  (:nicknames "DNS-SD-TESTS")
+  (:use "CL" "COM.WILDORA.DNS-SD")
+  (:export
+   "RUN-TESTS"))
