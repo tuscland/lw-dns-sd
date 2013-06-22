@@ -174,13 +174,15 @@
      (ttl :uint32)
      (context (:pointer :void)))
   (declare (ignore sdref context))
-  (let ((address (when addr
-                   (ip-address-from-sockaddr addr))))
+  (multiple-value-bind (protocol address)
+      (when addr
+        (ip-address-from-sockaddr addr))
     (reply error-code
            (flags-more-coming-p flags)
            :presence (flags-get-presence flags)
            :interface-index interface-index
            :hostname hostname
+           :protocol protocol
            :address address
            :ttl ttl)))
 

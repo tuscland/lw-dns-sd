@@ -241,7 +241,8 @@
               (result (wait-for-result operation)))
           (assert (string= (result-value result :hostname)
                            hostname))
-          (assert (stringp (result-value result :address)))))))
+          (assert (stringp (result-value result :address)))
+          (assert (result-value result :protocol))))))
 
 (defun test-nat-port-mapping-create ()
   (let* ((operation (nat-port-mapping-create 0))

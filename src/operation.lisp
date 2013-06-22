@@ -68,7 +68,8 @@
 (defmethod operation-invoke-callback ((self operation) result)
   (funcall (or (operation-callback self)
                #'operation-enqueue-result)
-           self result))
+           self
+           result))
 
 
 (declaim (special-dynamic *current-operation*))
@@ -76,8 +77,7 @@
 (defmethod reply (error-code more-coming-p &rest result-values)
   (maybe-signal-result-error error-code)
   (operation-invoke-callback *current-operation*
-                             (make-result more-coming-p
-                                          result-values)))
+                             (make-result more-coming-p result-values)))
 
 (defmethod process-result ((self operation))
   "Called from the dispatched to process pending results."

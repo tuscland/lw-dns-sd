@@ -58,25 +58,26 @@
 
 #+lispworks6.1
 (defun ip-address-from-sockaddr (pointer)
-  (comm:ip-address-string
-   (ecase (fli:foreign-slot-value pointer 'sa_family)
-     (#.comm::*socket_af_inet*
-      (fli:with-coerced-pointer
-          (addr-in :type '(:pointer (:struct comm::sockaddr_in))) pointer
-        (comm::sockaddr-in-to-lisp addr-in)))
-     (#.comm::*socket_af_inet6*
-      (fli:with-coerced-pointer
-          (addr-in :type '(:pointer (:struct comm::sockaddr_in6))) pointer
-        (comm::sockaddr-in6-to-lisp addr-in))))))
+  (ecase (fli:foreign-slot-value pointer 'sa_family)
+    (#.comm::*socket_af_inet*
+     (fli:with-coerced-pointer
+         (addr-in :type '(:pointer (:struct comm::sockaddr_in))) pointer
+       (values :ipv4 (comm:ip-address-string
+                      (comm::sockaddr-in-to-lisp addr-in)))))
+    (#.comm::*socket_af_inet6*
+     (fli:with-coerced-pointer
+         (addr-in :type '(:pointer (:struct comm::sockaddr_in6))) pointer
+       (values :ipv6 (comm:ip-address-string
+                      (comm::sockaddr-in6-to-lisp addr-in)))))))
 
 #+lispworks6.0
 (defun ip-address-from-sockaddr (pointer)
-  (comm:ip-address-string
-   (ecase (fli:foreign-slot-value pointer 'sa_family)
-     (#.comm::*socket_af_inet*
-      (fli:with-coerced-pointer
-          (addr-in :type '(:pointer (:struct comm::sockaddr_in))) pointer
-        (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr)))))))
+  (ecase (fli:foreign-slot-value pointer 'sa_family)
+    (#.comm::*socket_af_inet*
+     (fli:with-coerced-pointer
+         (addr-in :type '(:pointer (:struct comm::sockaddr_in))) pointer
+       (values :ipv4 (comm:ip-address-string
+                      (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr))))))))
 
 (fli:define-foreign-function (dns-service-deallocate
                               "DNSServiceRefDeallocate")
