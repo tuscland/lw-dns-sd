@@ -31,10 +31,6 @@
 (defun start-dispatch ()
   (when (dispatch-running-p)
     (error "DNS-SD Dispatch is already started."))
-
-  (fli:register-module "dnssd")
-  (assert (> (daemon-version) 0))
-
   (setf *process*
         (mp:process-run-function "DNS-SD Dispatch"
                                  '(:mailbox t)

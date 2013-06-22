@@ -101,6 +101,7 @@ returns a value indicating that an error occurred."
            ,args
          :result-type error-t)
        (defun ,name ,arg-names
+         (fli:register-module "dnssd")
          (let ((,result (,unwrapped-name ,@arg-names)))
            (maybe-signal-result-error ,result))))))
 

@@ -383,8 +383,8 @@
   (values))
 
 (defvar *protocols-flags*
-  `((:ipv4 . +protocol-ipv4+)
-    (:ipv6 . +protocol-ipv6+)
+  `((:ipv4 . ,+protocol-ipv4+)
+    (:ipv6 . ,+protocol-ipv6+)
     (:tcp . ,+protocol-tcp+)
     (:udp . ,+protocol-udp+)))
 
