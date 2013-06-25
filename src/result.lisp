@@ -39,6 +39,7 @@
 (defmethod result-value ((self result) (name symbol))
   ;; TODO: test property membership properly
   (unless (member name (result-values self))
+    ;; TODO: make it a correctable error
     (error "Result ~A does have a value named ~A" self name))
   (getf (result-values self)
         name))

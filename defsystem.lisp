@@ -31,7 +31,8 @@
             "operation"
             "dispatch"
             "core"
-            "api")
+            "api"
+            "high-level")
   :rules ((:in-order-to :compile :all
            (:requires
             (:load "package")
