@@ -57,32 +57,29 @@
   (cancel-operation operation)
   (funcall removal-callback))
 
-(defun %cleanup (process)
-  (declare (ignore process))
-  (dolist (operation (copy-seq *operations*))
-    (%remove-operation operation)))
-
 (defun dispatch-wait-reason ()
   (format nil "Waiting, ~[no~:;~:*~D~] pending operation~:P"
           (length *operations*)))
 
 (defun dispatch-loop ()
-  (mp:ensure-process-cleanup '%cleanup)
-  (loop :with mailbox := (mp:process-mailbox (mp:get-current-process))
-        :for operation := (sys:wait-for-input-streams-returning-first
-                           *operations*
-                           :wait-reason (dispatch-wait-reason)
-                           :wait-function #'(lambda ()
-                                              (not (null
-                                                    (mp:mailbox-peek mailbox)))))
-        :do (with-simple-restart (abort "Return to event loop.")
-              (if operation
-                  (handler-case (process-result operation)
-                    (result-error (condition)
-                      (declare (ignore condition))
-                      (%remove-operation operation)))
-                (mp:process-all-events)))
-        :while t))
+  (unwind-protect
+      (loop :with mailbox := (mp:process-mailbox (mp:get-current-process))
+            :for operation := (sys:wait-for-input-streams-returning-first
+                               *operations*
+                               :wait-reason (dispatch-wait-reason)
+                               :wait-function #'(lambda ()
+                                                  (not (null
+                                                        (mp:mailbox-peek mailbox)))))
+            :do (with-simple-restart (abort "Return to event loop.")
+                  (if operation
+                      (handler-case (process-result operation)
+                        (result-error (condition)
+                          (declare (ignore condition))
+                          (%remove-operation operation)))
+                    (mp:process-all-events)))
+            :while t)
+    (dolist (operation (copy-seq *operations*))
+      (%remove-operation operation))))
 
 (defun dispatch-send (form)
   (when (not (dispatch-running-p))
