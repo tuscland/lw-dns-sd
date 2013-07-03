@@ -97,16 +97,49 @@
   (stop-and-clear
    (address-lookup-operation self)))
 
-(defclass service ()
+
+(defgeneric service-equal (self other)
+  (:method (self other)
+   nil))
+
+(defclass base-service ()
   ((interface-index
+    :initarg :interface-index
     :accessor service-interface-index)
    (name
+    :initarg :name
     :accessor service-name)
    (type
+    :initarg :type
     :accessor service-type)
    (domain
-    :accessor service-domain)
-   (resolve-operation
+    :initarg :domain
+    :accessor service-domain)))
+
+(defmethod start ((self base-service) callback)
+  (values))
+
+(defmethod stop ((self base-service))
+  (values))
+
+(defmethod service-equal ((self base-service) (other base-service))
+  ;; FIXME: normally we should not use the interface-index, a service
+  ;; should be viewed as the same item on any interface-index.
+  (and (= (service-interface-index self)
+          (service-interface-index other))
+       (string= (service-name self)
+                (service-name other))
+       (string= (service-type self)
+                (service-type other))
+       (string= (service-domain self)
+                (service-domain other))))
+
+(defmethod print-object ((self base-service) stream)
+  (print-unreadable-object (self stream :type t :identity t)
+    (princ (service-name self) stream)))
+
+(defclass service (base-service)
+  ((resolve-operation
     :initform nil
     :accessor service-resolve-operation)
    (full-name
@@ -125,11 +158,12 @@
    '(:browse-result)))
 
 (defmethod initialize-instance :after ((self service) &key browse-result)
-  (assert (eq (dns-sd:result-value browse-result :presence) :add))
-  (setf (service-interface-index self) (dns-sd:result-value browse-result :interface-index)
-        (service-name self) (dns-sd:result-value browse-result :name)
-        (service-type self) (dns-sd:result-value browse-result :type) 
-        (service-domain self) (dns-sd:result-value browse-result :domain)))
+  (when browse-result
+    (assert (eq (dns-sd:result-value browse-result :presence) :add))
+    (setf (service-interface-index self) (dns-sd:result-value browse-result :interface-index)
+          (service-name self) (dns-sd:result-value browse-result :name)
+          (service-type self) (dns-sd:result-value browse-result :type) 
+          (service-domain self) (dns-sd:result-value browse-result :domain))))
 
 (defmethod start ((self service) callback)
   (assert (null (service-resolve-operation self)))
@@ -194,6 +228,9 @@
 
 (defmethod browser-find-service-from-result ((self browser) result)
   (find-if (lambda (service)
+             ;; FIXME: normally we should not use the interface-index, a service
+             ;; should be viewed as the same item on any interface-index.
+             ;; FIXME: How to factor this with service-equal?
              (and (= (service-interface-index service) (dns-sd:result-value result :interface-index))
                   (string= (service-name service) (dns-sd:result-value result :name))
                   (string= (service-type service) (dns-sd:result-value result :type))
