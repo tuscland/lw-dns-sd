@@ -19,26 +19,53 @@
 
 (in-package "COM.WILDORA.DNS-SD")
 
-(defmacro stop-and-clear (place)
-  `(when ,place
-     (cancel ,place)
-     (setf ,place nil)))
-
+(defgeneric start (object))
 (defgeneric in-progress-p (object))
 (defgeneric stop (object)
   (:method (object)
    nil))
 
-(defun dns-sd-result-adapter (callback object continuation)
+
+(defclass object-with-operation ()
+  ((operation
+    :initform nil
+    :accessor operation)
+   (callback
+    :initform #'do-nothing
+    :initarg :callback
+    :reader callback)))
+
+(defmethod invoke-callback ((self object-with-operation) reason &optional (object self))
+  (funcall (callback self) reason object))
+
+(defmethod report-error ((self object-with-operation) error)
+  (invoke-callback self :error error))
+
+(defmethod wrap-operation-callback ((self object-with-operation) callback)
   (lambda (operation result)
+    (declare (ignore operation))
     (typecase result
       (error
-       (funcall continuation object
-                :error result))
+       (report-error self result))
       (t
-       (funcall callback object
-                operation result
-                continuation)))))
+       (funcall callback self result)))))
+
+(defmethod start :before ((self object-with-operation))
+  (assert (null (operation self))))
+
+(defmethod start :around ((self object-with-operation))
+  (setf (operation self)
+        (call-next-method)))
+
+(defmethod in-progress-p ((self object-with-operation))
+  (not (null (operation self))))
+
+(defmethod stop ((self object-with-operation))
+  (with-slots (operation) self
+    (when operation
+      (cancel operation)
+      (setf operation nil))))
+
 
 (defstruct address ()
   protocol ; :ipv4 or :ipv6
@@ -46,7 +73,7 @@
   ip
   ttl)
 
-(defclass address-lookup ()
+(defclass address-lookup (object-with-operation)
   ((interface-index
     :initform (error "INTERFACE-INDEX must be specified.")
     :initarg :interface-index
@@ -55,34 +82,25 @@
     :initform (error "HOSTNAME must be specified")
     :initarg :hostname
     :accessor address-lookup-hostname)
-   (operation
-    :initform nil
-    :accessor address-lookup-operation)
    (addresses
     :initform nil
     :accessor address-lookup-addresses)))
 
-(defmethod start ((self address-lookup) callback)
-  (assert (null (address-lookup-operation self)))
-  (setf (address-lookup-addresses self) nil
-        (address-lookup-operation self)
-        (dns-sd:get-addr-info
-         (address-lookup-hostname self)
-         :interface-index (address-lookup-interface-index self)
-         :callback (dns-sd-result-adapter
-                    #'address-lookup-callback self callback))))
+(defmethod start ((self address-lookup))
+  (setf (address-lookup-addresses self) nil)
+  (get-addr-info (address-lookup-hostname self)
+                 :interface-index (address-lookup-interface-index self)
+                 :callback (wrap-operation-callback self #'address-lookup-callback)))
 
-(defmethod address-lookup-callback ((self address-lookup) operation result callback)
-  (when (eq (dns-sd:result-value result :presence) :add)
-    (push (make-address :protocol (dns-sd:result-value result :protocol) 
-                        :hostname (dns-sd:result-value result :hostname)
-                        :ip (dns-sd:result-value result :address)
-                        :ttl (dns-sd:result-value result :ttl))
+(defmethod address-lookup-callback ((self address-lookup) result)
+  (when (eq (result-value result :presence) :add)
+    (push (make-address :protocol (result-value result :protocol) 
+                        :hostname (result-value result :hostname)
+                        :ip (result-value result :address)
+                        :ttl (result-value result :ttl))
           (address-lookup-addresses self)))
-  (unless (dns-sd:result-more-coming-p result)
-    (stop-and-clear
-     (address-lookup-operation self))
-    (funcall callback :change nil)))
+  (unless (result-more-coming-p result)
+    (invoke-callback self :change)))
 
 (defmethod address-lookup-find-address ((self address-lookup) protocol)
   (assert (member protocol '(:ipv4 :ipv6)))
@@ -90,17 +108,11 @@
         (address-lookup-addresses self)
         :key #'address-protocol))
 
-(defmethod in-progress-p ((self address-lookup))
-  (not (null (address-lookup-operation self))))
-
-(defmethod stop ((self address-lookup))
-  (stop-and-clear
-   (address-lookup-operation self)))
-
 
 (defgeneric service-equal (self other)
   (:method (self other)
-   nil))
+   (and (null self)
+        (null other))))
 
 (defclass base-service ()
   ((interface-index
@@ -116,11 +128,11 @@
     :initarg :domain
     :accessor service-domain)))
 
-(defmethod start ((self base-service) callback)
-  (values))
+(defmethod start ((self base-service))
+  nil)
 
-(defmethod stop ((self base-service))
-  (values))
+(defmethod in-progress-p ((self base-service))
+  nil)
 
 (defmethod service-equal ((self base-service) (other base-service))
   ;; FIXME: normally we should not use the interface-index, a service
@@ -138,11 +150,10 @@
   (print-unreadable-object (self stream :type t :identity t)
     (princ (service-name self) stream)))
 
-(defclass service (base-service)
-  ((resolve-operation
-    :initform nil
-    :accessor service-resolve-operation)
-   (full-name
+
+(defclass service (base-service
+                   object-with-operation)
+  ((full-name
     :initform nil
     :accessor service-full-name)
    (hostname
@@ -153,93 +164,103 @@
     :accessor service-port)
    (txt-record
     :initform nil
-    :accessor service-txt-record))
-  (:extra-initargs
-   '(:browse-result)))
+    :accessor service-txt-record)))
 
-(defmethod initialize-instance :after ((self service) &key browse-result)
-  (when browse-result
-    (assert (eq (dns-sd:result-value browse-result :presence) :add))
-    (setf (service-interface-index self) (dns-sd:result-value browse-result :interface-index)
-          (service-name self) (dns-sd:result-value browse-result :name)
-          (service-type self) (dns-sd:result-value browse-result :type) 
-          (service-domain self) (dns-sd:result-value browse-result :domain))))
+(defmethod start ((self service))
+  (resolve (service-name self)
+           (service-type self)
+           (service-domain self)
+           :interface-index (service-interface-index self)
+           :callback (wrap-operation-callback self #'service-resolve-callback)))
 
-(defmethod start ((self service) callback)
-  (assert (null (service-resolve-operation self)))
-  (setf (service-resolve-operation self)
-        (dns-sd:resolve
-         (service-name self)
-         (service-type self)
-         (service-domain self)
-         :interface-index (service-interface-index self)
-         :callback (dns-sd-result-adapter
-                    #'service-resolve-callback self callback))))
-
-(defmethod service-resolve-callback ((self service) operation result callback)
-  (setf (service-full-name self) (dns-sd:result-value result :full-name)
-        (service-hostname self) (dns-sd:result-value result :hostname)
-        (service-port self) (dns-sd:result-value result :port)
-        (service-txt-record self) (dns-sd:result-value result :txt-record))
-  (unless (dns-sd:result-more-coming-p result)
-    (stop-and-clear
-     (service-resolve-operation self))
-    (funcall callback :change nil)))
-
-(defmethod in-progress-p ((self service))
-  (not (null (service-resolve-operation self))))
-
-(defmethod stop ((self service))
-  (stop-and-clear
-   (service-resolve-operation self)))
+(defmethod service-resolve-callback ((self service) result)
+  (setf (service-full-name self) (result-value result :full-name)
+        (service-hostname self) (result-value result :hostname)
+        (service-port self) (result-value result :port)
+        (service-txt-record self) (result-value result :txt-record))
+  (unless (result-more-coming-p result)
+    (invoke-callback self :change)))
 
 
-(defclass browser ()
+(defclass browser (object-with-operation)
   ((type
     :initform (error "TYPE must be specified")
     :initarg :type
     :accessor browser-type)
-   (operation
-    :initform nil
-    :accessor browser-browse-operation)
    (services
     :initform nil
-    :accessor browser-services)))
+    :accessor browser-services)
+   (service-callback
+    :initform #'do-nothing
+    :initarg :service-callback
+    :reader browser-service-callback)))
 
-(defmethod start ((self browser) callback)
-  (assert (null (browser-browse-operation self)))
-  (setf (browser-browse-operation self)
-        (dns-sd:browse (browser-type self)
-                       :callback (dns-sd-result-adapter
-                                  #'browser-browse-callback self callback))))
+(defmethod start ((self browser))
+  (browse (browser-type self)
+          :callback (wrap-operation-callback self #'browser-callback)))
 
-(defmethod browser-browse-callback ((self browser) operation result callback)
-  (ecase (dns-sd:result-value result :presence)
+(defun make-service-from-browse-result (browse-result callback)
+  (make-instance 'service
+                 :interface-index (result-value browse-result :interface-index)
+                 :name (result-value browse-result :name)
+                 :type (result-value browse-result :type)
+                 :domain (result-value browse-result :domain)
+                 :callback callback))
+
+(defmethod browser-callback ((self browser) result)
+  (ecase (result-value result :presence)
     (:add
-     (let ((service (make-instance 'service :browse-result result)))
-       (push service
-             (browser-services self))))
+     (push (make-service-from-browse-result result
+                                            (browser-service-callback self))
+           (browser-services self)))
     (:remove
-     (let ((service (browser-find-service-from-result self result)))
+     (let ((service (find-service-from-result result
+                                              (browser-services self))))
        (removef (browser-services self)
-                service))))
-  (unless (dns-sd:result-more-coming-p result)
-    (funcall callback :change nil)))
+                service)
+       (stop service))))
+  (unless (result-more-coming-p result)
+    (invoke-callback self :change)))
 
-(defmethod browser-find-service-from-result ((self browser) result)
+(defun find-service-from-result (result services)
   (find-if (lambda (service)
              ;; FIXME: normally we should not use the interface-index, a service
              ;; should be viewed as the same item on any interface-index.
              ;; FIXME: How to factor this with service-equal?
-             (and (= (service-interface-index service) (dns-sd:result-value result :interface-index))
-                  (string= (service-name service) (dns-sd:result-value result :name))
-                  (string= (service-type service) (dns-sd:result-value result :type))
-                  (string= (service-domain service) (dns-sd:result-value result :domain))))
-           (browser-services self)))
+             (and (= (service-interface-index service) (result-value result :interface-index))
+                  (string= (service-name service) (result-value result :name))
+                  (string= (service-type service) (result-value result :type))
+                  (string= (service-domain service) (result-value result :domain))))
+           services))
 
-(defmethod in-progress-p ((self browser))
-  (not (null (browser-browse-operation self))))
 
-(defmethod stop ((self browser))
-  (stop-and-clear
-   (browser-browse-operation self)))
+(defclass registration (object-with-operation)
+  ((port
+    :initform (error "PORT must be specified.")
+    :initarg :port
+    :reader registration-port)
+   (type
+    :initform (error "TYPE must be specified.")
+    :initarg :type
+    :reader registration-type)
+   (name
+    :initform nil
+    :initarg :name
+    :reader registration-name)
+   (domain
+    :initform nil
+    :initarg :domain
+    :reader registration-domain)))
+
+(defmethod start ((self registration))
+  (with-slots (port type name domain) self
+    (register port type
+              :name name
+              :domain domain
+              :callback (wrap-operation-callback self #'registration-callback))))
+
+(defmethod registration-callback ((self registration) result)
+  (with-slots (name domain) self
+    (setf name (result-value result :name)
+          domain (result-value result :domain))
+    (invoke-callback self :change)))
