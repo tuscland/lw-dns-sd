@@ -105,16 +105,18 @@
 (defun cancel (operation
                &key callback
                     (timeout *default-timeout*))
-  (let (finished-waiting)
-    (dispatch-remove-operation operation
-                               (or callback
-                                   #'(lambda ()
-                                       (setf finished-waiting t))))
-    (when (not (null callback))
-      (unless (mp:process-wait-with-timeout "Waiting for operation to be canceled."
-                                            timeout
-                                            #'(lambda ()
-                                                finished-waiting))
+  (if callback
+      (dispatch-remove-operation operation callback)
+    (let (finished-waiting
+          (process (mp:get-current-process)))
+      (dispatch-remove-operation operation
+                                 (lambda ()
+                                   (setf finished-waiting t)
+                                   (mp:process-poke process)))
+      (unless (mp:process-wait-local-with-timeout "Waiting for operation to be canceled."
+                                                  timeout
+                                                  (lambda ()
+                                                    finished-waiting))
         (error 'timeout-error))))
   (values))
 

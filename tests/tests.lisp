@@ -46,6 +46,7 @@
   '(test-if-name
     test-dispatch-run
     test-register-service
+    test-cancel-operation-callback
     test-register-service-type-error
     test-registration-conflict-1
     test-registration-conflict-2
@@ -99,6 +100,17 @@
     (signals error
       (result-value result :unknown-property))
     (cancel operation)))
+
+(defun test-cancel-operation-callback ()
+  (let* ((operation (register *test-service-port*
+                              *test-service-type*))
+         (result (wait-for-result operation))
+         result)
+    (cancel operation :timeout 5 :callback (lambda () (setf result :ok)))
+    (unless (mp:process-wait-with-timeout nil 1 (lambda ()
+                                                  result))
+      (error "Timeout while testing cancel"))
+    (assert (eq result :ok))))
 
 (defun test-register-service-type-error ()
   (signals dns-sd-error
