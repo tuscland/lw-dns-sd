@@ -95,7 +95,6 @@ DNSServiceErrorType and defines a wrapper around the foreign function
 that raises an error of type RESULT-ERROR if the foreign function
 returns a value indicating that an error occurred."
   (let ((unwrapped-name (intern (format nil "%~A" name)))
-	(result (gensym "RESULT"))
         (arg-names (mapcar #'car args)))
     `(progn
        (fli:define-foreign-function (,unwrapped-name ,external-name)
@@ -103,8 +102,8 @@ returns a value indicating that an error occurred."
          :result-type error-t)
        (defun ,name ,arg-names
          (fli:register-module "dnssd")
-         (let ((,result (,unwrapped-name ,@arg-names)))
-           (maybe-signal-result-error ,result))))))
+         (maybe-signal-result-error
+          (,unwrapped-name ,@arg-names))))))
 
 (define-dns-sd-function (dns-service-get-property
                          "DNSServiceGetProperty")

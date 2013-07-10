@@ -104,13 +104,13 @@
 (defun test-cancel-operation-callback ()
   (let* ((operation (register *test-service-port*
                               *test-service-type*))
-         (result (wait-for-result operation))
-         result)
-    (cancel operation :timeout 5 :callback (lambda () (setf result :ok)))
+         cancel-result)
+    (cancel operation :timeout 5 :callback (lambda ()
+                                             (setf cancel-result :ok)))
     (unless (mp:process-wait-with-timeout nil 1 (lambda ()
-                                                  result))
+                                                  cancel-result))
       (error "Timeout while testing cancel"))
-    (assert (eq result :ok))))
+    (assert (eq cancel-result :ok))))
 
 (defun test-register-service-type-error ()
   (signals dns-sd-error
