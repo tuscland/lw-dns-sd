@@ -80,24 +80,22 @@
                       (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr))))))))
 
 (defun check-external-module ()
+  #-macosx
   (handler-case
-      (fli:register-module :dns-sd
-                           :connection-style :immediate
-                           :real-name "dnssd")
+      (fli:register-module "dnssd"
+                           :connection-style :immediate)
     (error ()
       (error 'library-not-available-error))))
 
 (fli:define-foreign-function (dns-service-deallocate
                               "DNSServiceRefDeallocate")
     ((sdref service-ref))
-  :result-type :void
-  :module :dns-sd)
+  :result-type :void)
 
 (fli:define-foreign-function (dns-service-sockfd
                               "DNSServiceRefSockFD")
     ((sdref service-ref))
-  :result-type :int
-  :module :dns-sd)
+  :result-type :int)
 
 (defmacro define-dns-sd-function ((name external-name) args)
   "Declares a foreign function that returns a value of type
@@ -109,8 +107,7 @@ returns a value indicating that an error occurred."
     `(progn
        (fli:define-foreign-function (,unwrapped-name ,external-name)
            ,args
-         :result-type error-t
-         :module :dns-sd)
+         :result-type error-t)
        (defun ,name ,arg-names
          (check-external-module)
          (maybe-signal-result-error
