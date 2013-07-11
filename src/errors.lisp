@@ -27,6 +27,9 @@
 (define-condition timeout-error (dns-sd-error)
   ())
 
+(define-condition library-not-available-error (dns-sd-error)
+  ())
+
 (define-condition result-error (dns-sd-error)
   ((code
     :reader result-error-code

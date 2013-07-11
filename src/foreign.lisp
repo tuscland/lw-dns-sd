@@ -50,13 +50,13 @@
   (sa_family :uint8)
   (sa_data (:c-array :uint8)))
 
-#+win32
+#+(or mswindows linux)
 (fli:define-c-struct (sockaddr
                       (:foreign-name "sockaddr"))
   (sa_family :uint16)
   (sa_data (:c-array :uint8)))
 
-#+lispworks6.1
+#-lispworks6.0
 (defun ip-address-from-sockaddr (pointer)
   (ecase (fli:foreign-slot-value pointer 'sa_family)
     (#.comm::*socket_af_inet*
@@ -79,15 +79,25 @@
        (values :ipv4 (comm:ip-address-string
                       (fli:foreign-slot-value addr-in '(comm::sin_addr comm::s_addr))))))))
 
+(defun check-external-module ()
+  (handler-case
+      (fli:register-module :dns-sd
+                           :connection-style :immediate
+                           :real-name "dnssd")
+    (error ()
+      (error 'library-not-available-error))))
+
 (fli:define-foreign-function (dns-service-deallocate
                               "DNSServiceRefDeallocate")
     ((sdref service-ref))
-  :result-type :void)
+  :result-type :void
+  :module :dns-sd)
 
 (fli:define-foreign-function (dns-service-sockfd
                               "DNSServiceRefSockFD")
     ((sdref service-ref))
-  :result-type :int)
+  :result-type :int
+  :module :dns-sd)
 
 (defmacro define-dns-sd-function ((name external-name) args)
   "Declares a foreign function that returns a value of type
@@ -99,9 +109,10 @@ returns a value indicating that an error occurred."
     `(progn
        (fli:define-foreign-function (,unwrapped-name ,external-name)
            ,args
-         :result-type error-t)
+         :result-type error-t
+         :module :dns-sd)
        (defun ,name ,arg-names
-         (fli:register-module "dnssd")
+         (check-external-module)
          (maybe-signal-result-error
           (,unwrapped-name ,@arg-names))))))
 

@@ -22,17 +22,18 @@
 
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defconstant IFNAMSIZ 16)
-  #+win32 (fli:register-module "iphlpapi"))
+  (defconstant IFNAMSIZ 16))
 
 (fli:define-foreign-function (if-name-to-index "if_nametoindex")
     ((name (:reference-pass (:ef-mb-string :limit IFNAMSIZ))))
-  :result-type (:unsigned :int))
+  :result-type (:unsigned :int)
+  #+mswindows :module #+mswindows "iphlpapi")
 
 (fli:define-foreign-function (%if-index-to-name "if_indextoname")
     ((index (:unsigned :int))
      (name  :pointer))
-  :result-type :pointer)
+  :result-type :pointer
+  #+mswindows :module #+mswindows "iphlpapi")
 
 (defun if-index-to-name (index)
   (fli:with-dynamic-foreign-objects ((name (:ef-mb-string :limit IFNAMSIZ)))
@@ -40,7 +41,7 @@
       (unless (fli:pointer-eq result fli:*null-pointer*)
         (fli:convert-from-foreign-string name)))))
 
-#-win32
+#-mswindows
 (progn
   (fli:define-c-struct (if-nameindex
                         (:foreign-name "if_nameindex"))
@@ -67,11 +68,12 @@
               :do (fli:incf-pointer nameindex)
               :finally (%if-freenameindex result))))))
 
-#+win32
+#+mswindows
 (progn
   (fli:define-foreign-function (%get-number-of-interfaces "GetNumberOfInterfaces")
       ((ptr (:pointer win32:dword)))
-    :result-type win32:dword)
+    :result-type win32:dword
+    :module "iphlpapi")
 
   (defun get-number-of-interfaces ()
     (fli:with-dynamic-foreign-objects ((ptr win32:dword))

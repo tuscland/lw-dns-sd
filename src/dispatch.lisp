@@ -20,10 +20,9 @@
 
 (in-package "COM.WILDORA.DNS-SD")
 
-(defglobal-variable *operations* nil)
 (defglobal-variable *process* nil)
+(defglobal-variable *operations* '())
 (defparameter *process-join-timeout* 10)
-
 
 (defun dispatch-running-p ()
   (mp:process-alive-p *process*))

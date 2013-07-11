@@ -51,15 +51,15 @@
           (ash value -8)))
 
 (defun ntohs (value)
-  #+:little-endian
+  #+little-endian
   (swap-bytes-16 value)
-  #+:big-endian
+  #+big-endian
   value)
 
 (defun htons (value)
-  #+:little-endian
+  #+little-endian
   (swap-bytes-16 value)
-  #+:big-endian
+  #+big-endian
   value)
 
 
