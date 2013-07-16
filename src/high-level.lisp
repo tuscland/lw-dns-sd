@@ -50,10 +50,8 @@
       (t
        (funcall callback self result)))))
 
-(defmethod start :before ((self object-with-operation))
-  (assert (null (operation self))))
-
 (defmethod start :around ((self object-with-operation))
+  (assert (null (operation self)))
   (setf (operation self)
         (call-next-method)))
 
