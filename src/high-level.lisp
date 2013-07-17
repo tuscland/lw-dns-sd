@@ -248,7 +248,10 @@
    (domain
     :initform nil
     :initarg :domain
-    :reader registration-domain)))
+    :reader registration-domain)
+   (published-p
+    :initform nil
+    :reader registration-published-p)))
 
 (defmethod start ((self registration))
   (with-slots (port type name domain) self
@@ -258,7 +261,8 @@
               :callback (wrap-operation-callback self #'registration-callback))))
 
 (defmethod registration-callback ((self registration) result)
-  (with-slots (name domain) self
+  (with-slots (name domain published-p) self
     (setf name (result-value result :name)
-          domain (result-value result :domain))
+          domain (result-value result :domain)
+          published-p (eq (result-value result :presence) :add))
     (invoke-callback self :change)))
