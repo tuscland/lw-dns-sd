@@ -31,9 +31,11 @@
     :null-terminated-p t
     :external-format :utf-8))
 
-(fli:define-c-typedef (error-t
-                       (:foreign-name "DNSServiceErrorType"))
-  :int32)
+(fli:define-foreign-converter
+    error-t ()
+    result-code
+  :foreign-type :int32
+  :foreign-to-lisp `(maybe-signal-result-error ,result-code))
 
 (fli:define-c-typedef (flags-t
                        (:foreign-name "DNSServiceFlags"))
@@ -102,7 +104,7 @@
 DNSServiceErrorType and defines a wrapper around the foreign function
 that raises an error of type RESULT-ERROR if the foreign function
 returns a value indicating that an error occurred."
-  (let ((unwrapped-name (intern (format nil "%~A" name)))
+  (let ((unwrapped-name (intern (string-append '% name)))
         (arg-names (mapcar #'car args)))
     `(progn
        (fli:define-foreign-function (,unwrapped-name ,external-name)
@@ -110,8 +112,7 @@ returns a value indicating that an error occurred."
          :result-type error-t)
        (defun ,name ,arg-names
          (check-external-module)
-         (maybe-signal-result-error
-          (,unwrapped-name ,@arg-names))))))
+         (,unwrapped-name ,@arg-names)))))
 
 (define-dns-sd-function (dns-service-get-property
                          "DNSServiceGetProperty")
