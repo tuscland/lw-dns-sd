@@ -59,13 +59,13 @@
   (defun if-name-index ()
     (let ((result (%if-nameindex)))
       (unless (fli:null-pointer-p result)
-        (loop :with nameindex := (fli:copy-pointer result)
+        (loop :for nameindex := (fli:copy-pointer result)
+              :then (fli:incf-pointer nameindex)
               :for index := (fli:foreign-slot-value nameindex 'index)
               :while (plusp index)
               :collect (cons index
                              (fli:convert-from-foreign-string
                               (fli:foreign-slot-value nameindex 'name)))
-              :do (fli:incf-pointer nameindex)
               :finally (%if-freenameindex result))))))
 
 #+mswindows
