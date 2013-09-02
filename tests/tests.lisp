@@ -20,14 +20,37 @@
 
 (in-package "COM.WILDORA.DNS-SD-TESTS")
 
-(defparameter *test-service-type* "_test._udp")
-(defparameter *test-service-port* 9999)
-(defconstant +test-timeout+ 2)
 
-(defun wait-for-result-if (predicate operation)
+(defun wait-for-result-until (predicate operation)
+  "Wait for a result satistfying PREDICATE to occur on OPERATION.
+Predicate is a function taking one argument RESULT."
   (loop :for result := (wait-for-result operation)
         :when (funcall predicate result)
-        :do (return result)))
+        :return result))
+
+(defmacro bind-result-values ((&rest symbols) result &body body)
+  (if (null symbols)
+      `(progn ,@body)
+    (let ((result-var (gensym "RESULT")))
+      (flet ((result-binding (symbol)
+               (etypecase symbol
+                 (symbol
+                  (let ((keyword (intern (string symbol) "KEYWORD")))
+                    `(,symbol
+                      (result-value ,result-var ,keyword))))
+                 (list
+                  `(,(first symbol)
+                    (result-value ,result-var ,(second symbol)))))))
+        `(let* ((,result-var ,result)
+                ,@(mapcar #'result-binding symbols))
+           ,@body)))))
+
+(defmacro run-operation ((operation operation-form) &body body)
+  "Ensures CANCEL is called on OPERATION after BODY is executed."
+  `(let ((,operation ,operation-form))
+     (unwind-protect
+         (progn ,@body)
+       (cancel ,operation))))
 
 (defmacro signals (error &body body)
   `(with-simple-restart (continue "Continue testing")
@@ -41,6 +64,13 @@
        (:no-error (&rest results)
          (error "Failed to signal ~A, instead got result: ~A"
                 ',error results)))))
+
+(defun run-tests ()
+  (map nil (lambda (test)
+             (format *debug-io* "~&~A~%" test)
+             (funcall test))
+       *test-suite*)
+  t)
 
 (defparameter *test-suite*
   '(test-if-name
@@ -63,12 +93,9 @@
     test-txt-record
     test-record-crud))
 
-(defun run-tests ()
-  (map nil #'(lambda (test)
-               (format *debug-io* "~&~A~%" test)
-               (funcall test))
-       *test-suite*)
-  t)
+(defparameter *test-service-type* "_test._udp")
+(defparameter *test-service-port* 9999)
+(defconstant +test-timeout+ 2)
 
 (defun test-if-name ()
   (let ((interfaces (if-name-index)))
@@ -76,10 +103,6 @@
     (loop :for (index . name) :in interfaces :do
           (assert (string-equal name (if-index-to-name index)))
           (assert (= index (if-name-to-index name))))))
-
-(defun test-presence (result &optional (presence :add))
-  (assert (eq presence
-              (result-value result :presence))))
 
 (defun test-dispatch-run ()
   (when (dispatch-running-p)
@@ -92,23 +115,26 @@
   (signals warning (stop-dispatch)))
 
 (defun test-register-service ()
-  (let* ((operation (register *test-service-port*
-                              *test-service-type*))
-         (result (wait-for-result operation)))
-    (test-presence result)
-    ;; also test unknown properties.
-    (signals error
-      (result-value result :unknown-property))
-    (cancel operation)))
+  (run-operation (operation (register *test-service-port*
+                                      *test-service-type*))
+    (let ((result (wait-for-result operation)))
+      (bind-result-values (presence) result        
+        (assert (eq presence :add))
+        ;; also test unknown properties.
+        (signals error
+          (result-value result :unknown-property))))))
 
 (defun test-cancel-operation-callback ()
-  (let* ((operation (register *test-service-port*
-                              *test-service-type*))
-         cancel-result)
-    (cancel operation :timeout 5 :callback (lambda ()
-                                             (setf cancel-result :ok)))
-    (unless (mp:process-wait-with-timeout nil 1 (lambda ()
-                                                  cancel-result))
+  (let (cancel-result
+        (operation (register *test-service-port*
+                             *test-service-type*)))
+    (wait-for-result operation)
+    (mp:sleep-for-time 1)
+    (cancel operation
+            :timeout 5
+            :callback (lambda () (setf cancel-result :ok)))
+    (unless (mp:process-wait-with-timeout nil 1
+                                          (lambda () cancel-result))
       (error "Timeout while testing cancel"))
     (assert (eq cancel-result :ok))))
 
@@ -117,23 +143,25 @@
     (register *test-service-port* "badtype")))
 
 (defun do-registration-conflict (conflict-error-p)
-  (if (> (daemon-version) 3000000)
-      ;; 1. register a dummy service, automatically named
-      (let* ((operation (register *test-service-port*
-                                  *test-service-type*
-                                  :name "Registration Conflict"
-                                  :no-auto-rename conflict-error-p))
-             (result (wait-for-result operation))
-             (registered-name (result-value result :name)))
-        (test-presence result)
+  (cond
+   ((>= (daemon-version) 5220000)
+    ;; Max OS X 10.9 has a saner conflict resolution handling: Unlike
+    ;; previous versions, registering a conflicting service results in
+    ;; an error.
+    ;; 1. register a dummy service, with a given name
+    (run-operation (operation (register *test-service-port*
+                                        *test-service-type*
+                                        :name "Registration Conflict"
+                                        :no-auto-rename conflict-error-p))
+      (bind-result-values ((registered-name :name) presence)
+          (wait-for-result operation)
+        (assert (eq presence :add))
         ;; 2. register a service with the same name, but on a different
         ;; port for conflict
-        (let* ((conflict-operation (register (1+ *test-service-port*)
-                                             *test-service-type*
-                                             :name registered-name
-                                             :no-auto-rename t))
-               (result (wait-for-result conflict-operation)))
-          (test-presence result)
+        (run-operation (conflict-operation (register (1+ *test-service-port*)
+                                                     *test-service-type*
+                                                     :name registered-name
+                                                     :no-auto-rename t))
           (if conflict-error-p
               ;; 3a. conflict error: a condition is signaled when getting
               ;; the next result on the first operation.
@@ -141,17 +169,49 @@
                 (wait-for-result operation))
             ;; 3b. DNS-SD automatically renames our first service after
             ;; some time, by notifying on the first operation.
-            (let ((result (wait-for-result operation)))
-              (assert (eq (result-value result :presence) :remove))
+            (bind-result-values (presence) (wait-for-result operation)
+              (assert (eq presence :remove))
               ;; 4. The service has eventually been renamed, compare
               ;; that the new name is different.
-              (let ((result (wait-for-result operation)))
-                (assert (eq (result-value result :presence) :add))
-                (assert (not (string= registered-name
-                                      (result-value result :name)))))))
-          (cancel conflict-operation))
-        (cancel operation))
-    (format t "~&Skipping test because daemon version is below 3000000~%")))
+              (bind-result-values (presence name) (wait-for-result operation)
+                (assert (eq presence :add))
+                (assert (not (string= registered-name name))))))))))
+   ((> (daemon-version) 3000000)
+    ;; 1. register a dummy service, with a given name
+    (run-operation (operation (register *test-service-port*
+                                        *test-service-type*
+                                        :name "Registration Conflict"
+                                        :no-auto-rename conflict-error-p))
+      (bind-result-values ((registered-name :name) presence)
+          (wait-for-result operation)
+        (assert (eq presence :add))
+        ;; 2. register a service with the same name, but on a different
+        ;; port for conflict
+        (run-operation (conflict-operation (register (1+ *test-service-port*)
+                                                     *test-service-type*
+                                                     :name registered-name
+                                                     :no-auto-rename t))
+          (bind-result-values ((registered-name :name) presence)
+              (wait-for-result operation)
+            (assert (eq presence :add))
+            (if conflict-error-p
+                ;; 3a. conflict error: a condition is signaled when getting
+                ;; the next result on the first operation.
+                (signals dns-sd-error
+                  (wait-for-result operation))
+              ;; 3b. DNS-SD automatically renames our first service after
+              ;; some time, by notifying on the first operation.
+              (bind-result-values (presence)
+                  (wait-for-result operation)
+                (assert (eq presence :remove))
+                ;; 4. The service has eventually been renamed, compare
+                ;; that the new name is different.
+                (bind-result-values (presence name)
+                    (wait-for-result operation)
+                  (assert (eq presence :add))
+                  (assert (not (string= registered-name name)))))))))))
+   (t
+    (format t "~&Skipping test because daemon version is below 3000000~%"))))
 
 (defun test-registration-conflict-1 ()
   (do-registration-conflict nil))
@@ -160,114 +220,100 @@
   (do-registration-conflict t))
 
 (defun test-registration-identical-service-timeout ()
-  (let* ((operation (register *test-service-port*
-                              *test-service-type*))
-         (result (wait-for-result operation))
-         (registered-name (result-value result :name)))
-    (let* ((conflict-operation (register *test-service-port*
-                                         *test-service-type*
-                                         :name registered-name
-                                         :no-auto-rename t)))
-      ;; registering a service twice (with the same name, type and port) results
-      ;; in a timeout.
-      (signals timeout-error
-        (wait-for-result conflict-operation :timeout +test-timeout+))
-      (cancel conflict-operation))
-    (cancel operation)))
+  (run-operation (operation (register *test-service-port*
+                                      *test-service-type*))
+    (bind-result-values (name) (wait-for-result operation)
+      (run-operation (conflict-operation (register *test-service-port*
+                                                   *test-service-type*
+                                                   :name name
+                                                   :no-auto-rename t))
+        ;; registering a service twice (with the same name, type and
+        ;; port) results in a timeout.
+        (signals timeout-error
+          (wait-for-result conflict-operation
+                           :timeout +test-timeout+))))))
 
 (defun test-enumerate-browse-domains ()
-  (let* ((operation (enumerate-domains :domains :browse-domains))
-         (result (wait-for-result operation)))
-    (test-presence result)
-    (cancel operation)))
+  (run-operation (operation (enumerate-domains :domains :browse-domains))
+    (bind-result-values (presence) (wait-for-result operation)
+      (assert (eq presence :add)))))
 
 (defun test-enumerate-registration-domains ()
-  (let* ((operation (enumerate-domains :domains :registration-domains))
-         (result (wait-for-result operation)))
-    (test-presence result)
-    (cancel operation)))
+  (run-operation (operation (enumerate-domains :domains :registration-domains))
+    (bind-result-values (presence) (wait-for-result operation)
+      (assert (eq presence :add)))))
 
-(defun match-service-presence (presence service-name)
-  #'(lambda (result)
-      (and (eq presence (result-value result :presence))
-           (string= (result-value result :name)
-                    service-name))))
+(defun service-presence-matcher (presence service-name)
+  (lambda (result)
+    (and (eq presence (result-value result :presence))
+         (string= (result-value result :name)
+                  service-name))))
 
 (defun test-browse-timeout ()
-  (let ((operation (browse "_inexistent_service_type._udp")))
+  (run-operation (operation (browse "_inexistent_service_type._udp"))
     (signals timeout-error
-      (wait-for-result operation :timeout +test-timeout+))
-    (cancel operation)))
+      (wait-for-result operation :timeout +test-timeout+))))
 
 (defun test-browse ()
-  (let* ((operation (register *test-service-port*
-                              *test-service-type*
-                              :name "Browse Test Service"))
-         (result (wait-for-result operation))
-         (registered-name (result-value result :name))
-         (registered-domain (result-value result :domain))
-         (registered-type (result-value result :type)))
-    (test-presence result)
-    (let* ((browse-operation (browse registered-type
-                                     :domain registered-domain)))
-      (wait-for-result-if (match-service-presence :add registered-name)
-                          browse-operation)
-      (cancel operation) ; called with no callback is blocking
-      (wait-for-result-if (match-service-presence :remove registered-name)
-                          browse-operation)
-      (cancel browse-operation))))
+  (run-operation (operation (register *test-service-port*
+                                      *test-service-type*
+                                      :name "Browse Test Service"))
+    (bind-result-values (name domain type presence)
+        (wait-for-result operation)
+      (assert (eq presence :add))
+      (run-operation (browse-operation (browse type :domain domain))
+        (wait-for-result-until (service-presence-matcher :add name)
+                               browse-operation)
+        (cancel operation) ; called with no callback is blocking
+        (wait-for-result-until (service-presence-matcher :remove name)
+                               browse-operation)))))
 
 (defun register-browse-and-resolve (service-name test-function)
-  (let* ((register-operation (register *test-service-port*
-                                       *test-service-type*
-                                       :name service-name))
-         (register-result (wait-for-result register-operation)))
-    (let* ((browse-operation (browse (result-value register-result :type)
-                                     :domain (result-value register-result :domain)))
-           (browse-result (wait-for-result-if (match-service-presence :add (result-value register-result :name))
-                                              browse-operation)))
-      (let* ((resolve-operation (resolve (result-value browse-result :name)
-                                         (result-value browse-result :type)
-                                         (result-value browse-result :domain)))
-             (resolve-result (wait-for-result resolve-operation)))
-        (funcall test-function resolve-result)
-        (cancel resolve-operation))
-      (cancel browse-operation))
-    (cancel register-operation)))
+  (run-operation (register-operation (register *test-service-port*
+                                               *test-service-type*
+                                               :name service-name))
+    (bind-result-values (name type domain)
+        (wait-for-result register-operation)
+      (run-operation (browse-operation (browse type :domain domain))
+        (bind-result-values (name type domain)
+            (wait-for-result-until (service-presence-matcher :add name)
+                                   browse-operation)
+          (run-operation (resolve-operation (resolve name type domain))
+            (funcall test-function
+                     (wait-for-result resolve-operation))))))))
 
 (defun test-resolve ()
   (register-browse-and-resolve
    "Resolve Test Service"
-   #'(lambda (resolve-result)
-       (assert (stringp (result-value resolve-result :full-name)))
-       (assert (stringp (result-value resolve-result :hostname)))
-       (assert (= *test-service-port*
-                  (result-value resolve-result :port))))))
+   (lambda (result)
+     (bind-result-values (full-name hostname port) result
+       (assert (stringp full-name))
+       (assert (stringp hostname))
+       (assert (= *test-service-port* port))))))
 
 (defun test-get-addr-info ()
   (register-browse-and-resolve
    "GetAddrInfo Test Service"
-   #'(lambda (resolve-result)
-       (let* ((hostname (result-value resolve-result :hostname))
-              (operation (get-addr-info hostname))
-              (result (wait-for-result operation)))
-          (assert (string= (result-value result :hostname)
-                           hostname))
-          (assert (stringp (result-value result :address)))
-          (assert (result-value result :protocol))))))
+   (lambda (result)
+     (bind-result-values ((resolved-hostname :hostname)) result
+       (run-operation (operation (get-addr-info resolved-hostname))
+         (bind-result-values (hostname address protocol)
+             (wait-for-result operation)
+           (assert (string= hostname resolved-hostname))
+           (assert (stringp address))
+           (assert protocol)))))))
 
 (defun test-nat-port-mapping-create ()
-  (let* ((operation (nat-port-mapping-create 0))
-         (result (wait-for-result operation)))
-    (assert (stringp (result-value result :external-address)))
-    (assert (zerop (result-value result :internal-port)))
-    (assert (zerop (result-value result :external-port)))
-    (assert (zerop (result-value result :ttl)))
-    (cancel operation)))
+  (run-operation (operation (nat-port-mapping-create 0))
+    (bind-result-values (external-address internal-port external-port ttl)
+        (wait-for-result operation)
+      (assert (stringp external-address))
+      (assert (zerop internal-port))
+      (assert (zerop external-port))
+      (assert (zerop ttl)))))
 
 (defun test-create-connection ()
-  (let ((operation (create-connection)))
-    (cancel operation)))
+  (run-operation (operation (create-connection))))
 
 (defun test-construct-full-name ()
   (let ((actual (construct-full-name "foo service" "_bar._udp" "local"))
@@ -289,35 +335,30 @@
                     properties))))
 
 (defun test-record-crud ()
-  (let* ((record-type :TXT)
-         (operation (register *test-service-port*
-                              *test-service-type*))
-         (result (wait-for-result operation)))
-    (unwind-protect
-        (progn
-          (test-presence result)
-          (let* ((record-data (build-txt-record *test-txt-properties*))
-                 (record-ref (add-record operation record-type record-data)))
-            (assert record-ref)
-            (let* ((full-name (construct-full-name (result-value result :name)
-                                                   *test-service-type*
-                                                   "local"))
-                   (operation (query-record full-name record-type))
-                   ;; DNS-SD will return two results here, one with
-                   ;; empty rdata and the other with our txt-record.
-                   (result (wait-for-result-if #'(lambda (result)
-                                                   (not (null (parse-txt-record
-                                                               (result-value result :rdata)))))
-                                               operation)))
-              (test-presence result)
-              (assert (string= (result-value result :full-name)
-                               full-name))
-              (assert (eq (result-value result :rrtype)
-                          record-type))
-              (assert (equalp (result-value result :rdata)
-                              record-data))
-              (cancel operation))
-            (update-record operation record-ref
-                           (build-txt-record '(("foo.wildora.com" . "bar"))))
-            (remove-record operation record-ref)))
-        (cancel operation))))
+  (run-operation (operation (register *test-service-port*
+                                      *test-service-type*))
+    (bind-result-values ((register-name :name) presence)
+        (wait-for-result operation)
+      (assert (eq presence :add))
+      (let* ((record-type :TXT)
+             (record-data (build-txt-record *test-txt-properties*))
+             (record-ref (add-record operation record-type record-data))
+             (our-full-name (construct-full-name register-name
+                                                 *test-service-type*
+                                                 "local")))
+        (assert record-ref)
+        (run-operation (operation (query-record our-full-name record-type))
+          (bind-result-values (full-name rrtype rdata presence)
+              (wait-for-result-until (lambda (result)
+                                       (not (null (parse-txt-record
+                                                   (result-value result :rdata)))))
+                                     operation)
+            ;; DNS-SD will return two results here, one with empty
+            ;; rdata and the other with our txt-record.
+            (assert (eq presence :add))
+            (assert (string= full-name our-full-name))
+            (assert (eq rrtype record-type))
+            (assert (equalp rdata record-data))))
+        (update-record operation record-ref
+                       (build-txt-record '(("foo.wildora.com" . "bar"))))
+        (remove-record operation record-ref)))))
