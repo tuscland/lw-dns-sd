@@ -106,20 +106,18 @@
                     (timeout *default-timeout*))
   (if callback
       (dispatch-remove-operation operation callback)
-    (let (finished-waiting
-          (process (mp:get-current-process)))
+    (let ((finished-waiting nil)
+          (waiting-process (mp:get-current-process)))
       (dispatch-remove-operation operation
                                  (lambda ()
                                    (setf finished-waiting t)
-                                   (mp:process-poke process)))
+                                   (mp:process-poke waiting-process)))
       (unless (mp:process-wait-local-with-timeout "Waiting for operation to be canceled."
                                                   timeout
-                                                  (lambda ()
-                                                    finished-waiting))
+                                                  (lambda () finished-waiting))
         (error 'timeout-error))))
   (values))
 
 (defun dispatch (&rest operation-initargs)
   (dispatch-add-operation
-   (apply #'make-instance 'operation
-          operation-initargs)))
+   (apply #'make-instance 'operation operation-initargs)))

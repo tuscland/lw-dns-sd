@@ -52,25 +52,18 @@ Predicate is a function taking one argument RESULT."
          (progn ,@body)
        (cancel ,operation))))
 
-(defmacro signals (error &body body)
+(defmacro signals (error-type &body body)
   `(with-simple-restart (continue "Continue testing")
      (handler-case (progn ,@body)
-       (,error (condition)
+       (,error-type (condition)
          (declare (ignore condition))
          t)
        (condition (conndition)
          (declare (ignore condition))
-         (error "Expected a condition of type ~A" ',error))
+         (error "Expected a condition of type ~A" ',error-type))
        (:no-error (&rest results)
          (error "Failed to signal ~A, instead got result: ~A"
-                ',error results)))))
-
-(defun run-tests ()
-  (map nil (lambda (test)
-             (format *debug-io* "~&~A~%" test)
-             (funcall test))
-       *test-suite*)
-  t)
+                ',error-type results)))))
 
 (defparameter *test-suite*
   '(test-if-name
@@ -92,6 +85,13 @@ Predicate is a function taking one argument RESULT."
     test-construct-full-name
     test-txt-record
     test-record-crud))
+
+(defun run-tests ()
+  (map nil (lambda (test)
+             (format *debug-io* "~&~A~%" test)
+             (funcall test))
+       *test-suite*)
+  t)
 
 (defparameter *test-service-type* "_test._udp")
 (defparameter *test-service-port* 9999)
@@ -169,13 +169,13 @@ Predicate is a function taking one argument RESULT."
                 (wait-for-result operation))
             ;; 3b. DNS-SD automatically renames our first service after
             ;; some time, by notifying on the first operation.
-            (bind-result-values (presence) (wait-for-result operation)
-              (assert (eq presence :remove))
+            (bind-result-values (presence) (wait-for-result conflict-operation)
+              (assert (eq presence :add))
               ;; 4. The service has eventually been renamed, compare
               ;; that the new name is different.
               (bind-result-values (presence name) (wait-for-result operation)
-                (assert (eq presence :add))
-                (assert (not (string= registered-name name))))))))))
+                (assert (eq presence :remove))
+                (assert (string= registered-name name)))))))))
    ((> (daemon-version) 3000000)
     ;; 1. register a dummy service, with a given name
     (run-operation (operation (register *test-service-port*

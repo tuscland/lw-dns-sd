@@ -135,7 +135,11 @@
 (defmethod service-equal ((self base-service) (other base-service))
   ;; FIXME: normally we should not use the interface-index, a service
   ;; should be viewed as the same item on any interface-index.
-  (and (= (service-interface-index self)
+  (and #+nil
+       (= (service-interface-index self) ;Not totally sure at this
+                                         ;moment that the
+                                         ;interface-index should be
+                                         ;used to compare services.
           (service-interface-index other))
        (string= (service-name self)
                 (service-name other))
