@@ -22,22 +22,29 @@
 
 (in-package "COM.WILDORA.DNS-SD")
 
-(defclass result ()
+
+(defclass base-result ()
+  ((operation
+    :reader result-operation
+    :initform (error "OPERATION must be specified")
+    :initarg :operation)
+   (time
+    :reader result-time
+    :initform (get-universal-time))))
+
+
+(defclass result (base-result)
   ((values
     :reader result-values
     :initform nil
-    :initarg :properties)
+    :initarg :values)
    (more-coming-p
     :reader result-more-coming-p
     :initform nil
     :initarg :more-coming-p)))
 
-(defgeneric check-result (object)
-  (:method ((object result))
-   object))
-
 (defmethod result-value ((self result) (name symbol))
-  ;; TODO: test property membership properly
+  ;; TODO: test value membership properly
   (unless (member name (result-values self))
     ;; TODO: make it a correctable error
     (error "Result ~A does have a value named ~A" self name))
@@ -50,11 +57,8 @@
             (result-more-coming-p self)
             (result-values self))))
 
-(defun make-result (more-coming-p properties)
-  (make-instance 'result
-                 :more-coming-p more-coming-p
-                 :properties properties))
-
-(defmethod check-result ((object condition))
-  (error object))
-
+(defclass error-result (base-result)
+  ((underlying-error
+    :reader error-result-underlying-error
+    :initarg :underlying-error
+    :initform (error "UNDERLYING-ERROR must be specified"))))
