@@ -46,7 +46,12 @@
             (:load "result")))
           (:in-order-to :compile ("dispatch")
            (:requires
-            (:load "errors")))))
+            (:load "errors")))
+          (:in-order-to :compile ("api")
+           (:requires
+            (:load "foreign")
+            (:load "dispatch")
+            (:load "core")))))
 
 (defsystem "COM.WILDORA.DNS-SD-TESTS"
   (:default-pathname "tests")
