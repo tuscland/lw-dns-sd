@@ -37,12 +37,13 @@
   (:report (lambda (condition stream)
              (format stream
                      "~A (~X)"
-                     (result-code-description
-                      (result-error-code condition))
+                     (or (error-code-description
+                          (result-error-code condition))
+                         "Unknown Error")
                      (result-error-code condition))))
   (:documentation "Signalled if a DNS-SD foreign function returns an error code."))
 
-(defparameter *result-codes-descriptions*
+(defconstant +error-code-descriptions+
   '((-65538 . "No such name")
     (-65539 . "No memory")
     (-65540 . "Bad parameter")
@@ -74,11 +75,10 @@
     (-65567 . "Polling mode")
     (-65568 . "Timeout")))
 
-(defun result-code-description (code)
-  (or (cdr (assoc code *result-codes-descriptions*))
-      "Unknown"))
+(defun error-code-description (code)
+  (cdr (assoc code +error-code-descriptions+)))
 
-(defun maybe-signal-result-error (code)
+(defun check-error-code (code)
   (unless (zerop code)
     (error 'result-error :code code))
   code)

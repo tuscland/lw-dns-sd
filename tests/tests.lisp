@@ -20,11 +20,27 @@
 
 (in-package "COM.WILDORA.DNS-SD-TESTS")
 
+(defgeneric check-result (object)
+  (:method ((object result))
+   object))
 
-(defun wait-for-result-until (predicate operation)
+(defmethod check-result ((object error-result))
+  (error (error-result-underlying-error object)))
+
+(defun wait-for-result (&key (timeout *default-timeout*))
+  (check-result
+   (multiple-value-bind (object no-timeout-p)
+       (mp:mailbox-read (results-mailbox)
+                        "Waiting for next DNS-SD result"
+                        timeout)
+     (if no-timeout-p
+         object
+       (error 'timeout-error)))))
+
+(defun wait-for-result-until (predicate)
   "Wait for a result satistfying PREDICATE to occur on OPERATION.
 Predicate is a function taking one argument RESULT."
-  (loop :for result := (wait-for-result operation)
+  (loop :for result := (wait-for-result)
         :when (funcall predicate result)
         :return result))
 
@@ -47,10 +63,11 @@ Predicate is a function taking one argument RESULT."
 
 (defmacro run-operation ((operation operation-form) &body body)
   "Ensures CANCEL is called on OPERATION after BODY is executed."
-  `(let ((,operation ,operation-form))
-     (unwind-protect
-         (progn ,@body)
-       (cancel ,operation))))
+  `(bind-results-mailbox ((mp:make-mailbox))
+     (let ((,operation ,operation-form))
+       (unwind-protect
+           (progn ,@body)
+         (cancel ,operation)))))
 
 (defmacro signals (error-type &body body)
   `(with-simple-restart (continue "Continue testing")
@@ -58,9 +75,9 @@ Predicate is a function taking one argument RESULT."
        (,error-type (condition)
          (declare (ignore condition))
          t)
-       (condition (conndition)
+       (condition (condition)
          (declare (ignore condition))
-         (error "Expected a condition of type ~A" ',error-type))
+         (error "Unexpected Error: \"~A\"" ',error-type condition))
        (:no-error (&rest results)
          (error "Failed to signal ~A, instead got result: ~A"
                 ',error-type results)))))
@@ -71,8 +88,6 @@ Predicate is a function taking one argument RESULT."
     test-register-service
     test-cancel-operation-callback
     test-register-service-type-error
-    test-registration-conflict-1
-    test-registration-conflict-2
     test-registration-identical-service-timeout
     test-enumerate-browse-domains
     test-enumerate-registration-domains
@@ -117,7 +132,7 @@ Predicate is a function taking one argument RESULT."
 (defun test-register-service ()
   (run-operation (operation (register *test-service-port*
                                       *test-service-type*))
-    (let ((result (wait-for-result operation)))
+    (let ((result (wait-for-result)))
       (bind-result-values (presence) result        
         (assert (eq presence :add))
         ;; also test unknown properties.
@@ -125,104 +140,28 @@ Predicate is a function taking one argument RESULT."
           (result-value result :unknown-property))))))
 
 (defun test-cancel-operation-callback ()
-  (let (cancel-result
-        (operation (register *test-service-port*
-                             *test-service-type*)))
-    (wait-for-result operation)
-    (mp:sleep-for-time 1)
-    (cancel operation
-            :timeout 5
-            :callback (lambda () (setf cancel-result :ok)))
-    (unless (mp:process-wait-with-timeout nil 1
-                                          (lambda () cancel-result))
-      (error "Timeout while testing cancel"))
-    (assert (eq cancel-result :ok))))
+  (run-operation (operation (register *test-service-port*
+                                      *test-service-type*))
+    (let (cancel-result)
+      (wait-for-result)
+      (mp:sleep-for-time 1)
+      (cancel operation
+              :timeout 5
+              :callback (lambda () (setf cancel-result :ok)))
+      (unless (mp:process-wait-with-timeout nil 1
+                                            (lambda () cancel-result))
+        (error "Timeout while testing cancel"))
+      (assert (eq cancel-result :ok)))))
 
 (defun test-register-service-type-error ()
-  (signals dns-sd-error
-    (register *test-service-port* "badtype")))
-
-(defun do-registration-conflict (conflict-error-p)
-  (cond
-   ((>= (daemon-version) 5220000)
-    ;; Max OS X 10.9 has a saner conflict resolution handling: Unlike
-    ;; previous versions, registering a conflicting service results in
-    ;; an error.
-    ;; 1. register a dummy service, with a given name
-    (run-operation (operation (register *test-service-port*
-                                        *test-service-type*
-                                        :name "Registration Conflict"
-                                        :no-auto-rename conflict-error-p))
-      (bind-result-values ((registered-name :name) presence)
-          (wait-for-result operation)
-        (assert (eq presence :add))
-        ;; 2. register a service with the same name, but on a different
-        ;; port for conflict
-        (run-operation (conflict-operation (register (1+ *test-service-port*)
-                                                     *test-service-type*
-                                                     :name registered-name
-                                                     :no-auto-rename t))
-          (if conflict-error-p
-              ;; 3a. conflict error: a condition is signaled when getting
-              ;; the next result on the first operation.
-              (signals dns-sd-error
-                (wait-for-result operation))
-            ;; 3b. DNS-SD automatically renames our first service after
-            ;; some time, by notifying on the first operation.
-            (bind-result-values (presence) (wait-for-result conflict-operation)
-              (assert (eq presence :add))
-              ;; 4. The service has eventually been renamed, compare
-              ;; that the new name is different.
-              (bind-result-values (presence name) (wait-for-result operation)
-                (assert (eq presence :remove))
-                (assert (string= registered-name name)))))))))
-   ((> (daemon-version) 3000000)
-    ;; 1. register a dummy service, with a given name
-    (run-operation (operation (register *test-service-port*
-                                        *test-service-type*
-                                        :name "Registration Conflict"
-                                        :no-auto-rename conflict-error-p))
-      (bind-result-values ((registered-name :name) presence)
-          (wait-for-result operation)
-        (assert (eq presence :add))
-        ;; 2. register a service with the same name, but on a different
-        ;; port for conflict
-        (run-operation (conflict-operation (register (1+ *test-service-port*)
-                                                     *test-service-type*
-                                                     :name registered-name
-                                                     :no-auto-rename t))
-          (bind-result-values ((registered-name :name) presence)
-              (wait-for-result operation)
-            (assert (eq presence :add))
-            (if conflict-error-p
-                ;; 3a. conflict error: a condition is signaled when getting
-                ;; the next result on the first operation.
-                (signals dns-sd-error
-                  (wait-for-result operation))
-              ;; 3b. DNS-SD automatically renames our first service after
-              ;; some time, by notifying on the first operation.
-              (bind-result-values (presence)
-                  (wait-for-result operation)
-                (assert (eq presence :remove))
-                ;; 4. The service has eventually been renamed, compare
-                ;; that the new name is different.
-                (bind-result-values (presence name)
-                    (wait-for-result operation)
-                  (assert (eq presence :add))
-                  (assert (not (string= registered-name name)))))))))))
-   (t
-    (format t "~&Skipping test because daemon version is below 3000000~%"))))
-
-(defun test-registration-conflict-1 ()
-  (do-registration-conflict nil))
-
-(defun test-registration-conflict-2 ()
-  (do-registration-conflict t))
+  (bind-results-mailbox (nil)
+    (signals dns-sd-error
+      (register *test-service-port* "badtype"))))
 
 (defun test-registration-identical-service-timeout ()
   (run-operation (operation (register *test-service-port*
                                       *test-service-type*))
-    (bind-result-values (name) (wait-for-result operation)
+    (bind-result-values (name) (wait-for-result)
       (run-operation (conflict-operation (register *test-service-port*
                                                    *test-service-type*
                                                    :name name
@@ -230,17 +169,16 @@ Predicate is a function taking one argument RESULT."
         ;; registering a service twice (with the same name, type and
         ;; port) results in a timeout.
         (signals timeout-error
-          (wait-for-result conflict-operation
-                           :timeout +test-timeout+))))))
+          (wait-for-result :timeout +test-timeout+))))))
 
 (defun test-enumerate-browse-domains ()
   (run-operation (operation (enumerate-domains :domains :browse-domains))
-    (bind-result-values (presence) (wait-for-result operation)
+    (bind-result-values (presence) (wait-for-result)
       (assert (eq presence :add)))))
 
 (defun test-enumerate-registration-domains ()
   (run-operation (operation (enumerate-domains :domains :registration-domains))
-    (bind-result-values (presence) (wait-for-result operation)
+    (bind-result-values (presence) (wait-for-result)
       (assert (eq presence :add)))))
 
 (defun service-presence-matcher (presence service-name)
@@ -252,35 +190,32 @@ Predicate is a function taking one argument RESULT."
 (defun test-browse-timeout ()
   (run-operation (operation (browse "_inexistent_service_type._udp"))
     (signals timeout-error
-      (wait-for-result operation :timeout +test-timeout+))))
+      (wait-for-result :timeout +test-timeout+))))
 
 (defun test-browse ()
   (run-operation (operation (register *test-service-port*
                                       *test-service-type*
                                       :name "Browse Test Service"))
     (bind-result-values (name domain type presence)
-        (wait-for-result operation)
+        (wait-for-result)
       (assert (eq presence :add))
       (run-operation (browse-operation (browse type :domain domain))
-        (wait-for-result-until (service-presence-matcher :add name)
-                               browse-operation)
+        (wait-for-result-until (service-presence-matcher :add name))
         (cancel operation) ; called with no callback is blocking
-        (wait-for-result-until (service-presence-matcher :remove name)
-                               browse-operation)))))
+        (wait-for-result-until (service-presence-matcher :remove name))))))
 
 (defun register-browse-and-resolve (service-name test-function)
   (run-operation (register-operation (register *test-service-port*
                                                *test-service-type*
                                                :name service-name))
     (bind-result-values (name type domain)
-        (wait-for-result register-operation)
+        (wait-for-result)
       (run-operation (browse-operation (browse type :domain domain))
         (bind-result-values (name type domain)
-            (wait-for-result-until (service-presence-matcher :add name)
-                                   browse-operation)
+            (wait-for-result-until (service-presence-matcher :add name))
           (run-operation (resolve-operation (resolve name type domain))
             (funcall test-function
-                     (wait-for-result resolve-operation))))))))
+                     (wait-for-result))))))))
 
 (defun test-resolve ()
   (register-browse-and-resolve
@@ -298,7 +233,7 @@ Predicate is a function taking one argument RESULT."
      (bind-result-values ((resolved-hostname :hostname)) result
        (run-operation (operation (get-addr-info resolved-hostname))
          (bind-result-values (hostname address protocol)
-             (wait-for-result operation)
+             (wait-for-result)
            (assert (string= hostname resolved-hostname))
            (assert (stringp address))
            (assert protocol)))))))
@@ -306,7 +241,7 @@ Predicate is a function taking one argument RESULT."
 (defun test-nat-port-mapping-create ()
   (run-operation (operation (nat-port-mapping-create 0))
     (bind-result-values (external-address internal-port external-port ttl)
-        (wait-for-result operation)
+        (wait-for-result)
       (assert (stringp external-address))
       (assert (zerop internal-port))
       (assert (zerop external-port))
@@ -338,7 +273,7 @@ Predicate is a function taking one argument RESULT."
   (run-operation (operation (register *test-service-port*
                                       *test-service-type*))
     (bind-result-values ((register-name :name) presence)
-        (wait-for-result operation)
+        (wait-for-result)
       (assert (eq presence :add))
       (let* ((record-type :TXT)
              (record-data (build-txt-record *test-txt-properties*))
@@ -351,8 +286,7 @@ Predicate is a function taking one argument RESULT."
           (bind-result-values (full-name rrtype rdata presence)
               (wait-for-result-until (lambda (result)
                                        (not (null (parse-txt-record
-                                                   (result-value result :rdata)))))
-                                     operation)
+                                                   (result-value result :rdata))))))
             ;; DNS-SD will return two results here, one with empty
             ;; rdata and the other with our txt-record.
             (assert (eq presence :add))

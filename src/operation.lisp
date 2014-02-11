@@ -34,13 +34,10 @@
     :accessor operation-handle
     :initform (error "HANDLE must be specified")
     :initarg :handle)
-   (callback
-    :reader operation-callback
+   (mailbox
+    :reader operation-mailbox
     :initform nil
-    :initarg :callback)
-   (results-queue
-    :reader operation-results-queue
-    :initform (mp:make-mailbox)))
+    :initarg :mailbox))
   (:default-initargs
    :direction :input))
 
@@ -50,7 +47,7 @@
 
 (defmethod cancel-operation ((self operation))
   (if (operation-canceled-p self)
-      (warn "Operation ~A has already been canceled" self)
+      (warn "Operation ~A already canceled" self)
     (progn
       (dns-service-deallocate (operation-handle self))
       (setf (fli:pointer-address
@@ -60,40 +57,27 @@
   (fli:null-pointer-p
    (operation-handle self)))
 
-(defmethod operation-enqueue-result ((self operation) result)
-  (mp:mailbox-send
-   (operation-results-queue self)
-   result))
+(defmethod enqueue-result ((self operation) class &rest initargs)
+  (mp:mailbox-send (operation-mailbox self)
+                   (apply 'make-instance class
+                          :operation self
+                          initargs)))
 
-(defmethod operation-invoke-callback ((self operation) result)
-  (funcall (or (operation-callback self)
-               #'operation-enqueue-result)
-           self
-           result))
+(declaim (special-dynamic *process-result-operation*))
 
-
-(declaim (special-dynamic *current-operation*))
-
-(defmethod reply (error-code more-coming-p &rest result-values)
-  (maybe-signal-result-error error-code)
-  (operation-invoke-callback *current-operation*
-                             (make-result more-coming-p result-values)))
+(defun reply (error-code more-coming-p &rest result-values)
+  (check-error-code error-code)
+  (enqueue-result *process-result-operation* 'result
+                  :more-coming-p more-coming-p
+                  :values result-values))
 
 (defmethod process-result ((self operation))
-  "Called from the dispatched to process pending results."
+  "Called from the dispatcher to process pending results."
   (handler-bind ((result-error
                   #'(lambda (condition)
-                      (operation-invoke-callback self condition))))
-    (let ((*current-operation* self))
+                      (enqueue-result self 'error-result
+                                      :operation self
+                                      :underlying-error condition))))
+    (let ((*process-result-operation* self))
       (dns-service-process-result
        (operation-handle self)))))
-
-(defun wait-for-result (operation &key (timeout *default-timeout*))
-  (check-result
-   (multiple-value-bind (object no-timeout-p)
-       (mp:mailbox-read (operation-results-queue operation)
-                        "Waiting for next operation result"
-                        timeout)
-     (if no-timeout-p
-         object
-       (error 'timeout-error)))))

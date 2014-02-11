@@ -35,7 +35,7 @@
     error-t ()
     result-code
   :foreign-type :int32
-  :foreign-to-lisp `(maybe-signal-result-error ,result-code))
+  :foreign-to-lisp `(check-error-code ,result-code))
 
 (fli:define-c-typedef (flags-t
                        (:foreign-name "DNSServiceFlags"))
@@ -102,7 +102,7 @@
 (defmacro define-dns-sd-function ((name external-name) args)
   "Declares a foreign function that returns a value of type
 DNSServiceErrorType and defines a wrapper around the foreign function
-that raises an error of type RESULT-ERROR if the foreign function
+that raises an error of type ERROR-RESULT if the foreign function
 returns a value indicating that an error occurred."
   (let ((unwrapped-name (intern (string-append '% name)))
         (arg-names (mapcar #'car args)))
@@ -135,7 +135,7 @@ returns a value indicating that an error occurred."
 ;;;; Low level versions of operations functions
 ;;;;
 
-(define-dns-sd-function (%dns-service-register
+(define-dns-sd-function (dns-service-register
                          "DNSServiceRegister")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -150,7 +150,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-enumerate-domains
+(define-dns-sd-function (dns-service-enumerate-domains
                          "DNSServiceEnumerateDomains")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -158,7 +158,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-browse
+(define-dns-sd-function (dns-service-browse
                          "DNSServiceBrowse")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -168,7 +168,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-resolve
+(define-dns-sd-function (dns-service-resolve
                          "DNSServiceResolve")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -179,7 +179,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-get-addr-info
+(define-dns-sd-function (dns-service-get-addr-info
                          "DNSServiceGetAddrInfo")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -189,7 +189,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-query-record
+(define-dns-sd-function (dns-service-query-record
                          "DNSServiceQueryRecord")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -200,7 +200,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-nat-port-mapping-create
+(define-dns-sd-function (dns-service-nat-port-mapping-create
                          "DNSServiceNATPortMappingCreate")
   ((sdref (:pointer service-ref))
    (flags flags-t)
@@ -212,7 +212,7 @@ returns a value indicating that an error occurred."
    (callback (:pointer :function))
    (context (:pointer :void))))
 
-(define-dns-sd-function (%dns-service-register-record
+(define-dns-sd-function (dns-service-register-record
                          "DNSServiceRegisterRecord")
   ((sdref service-ref)
    (rdref (:pointer record-ref))
@@ -232,7 +232,7 @@ returns a value indicating that an error occurred."
                          "DNSServiceCreateConnection")
   ((sdref (:pointer service-ref))))
 
-(define-dns-sd-function (%dns-service-add-record
+(define-dns-sd-function (dns-service-add-record
                          "DNSServiceAddRecord")
   ((sdref service-ref)
    (rdref (:pointer record-ref))
@@ -242,7 +242,7 @@ returns a value indicating that an error occurred."
    (rdata (:pointer :void))
    (ttl :uint32)))
 
-(define-dns-sd-function (%dns-service-update-record
+(define-dns-sd-function (dns-service-update-record
                          "DNSServiceUpdateRecord")
   ((sdref service-ref)
    (rdref record-ref)
@@ -251,13 +251,13 @@ returns a value indicating that an error occurred."
    (data (:const (:pointer :void)))
    (ttl :uint32)))
 
-(define-dns-sd-function (%dns-service-remove-record
+(define-dns-sd-function (dns-service-remove-record
                          "DNSServiceRemoveRecord")
   ((sdref service-ref)
    (rdref record-ref)
    (flags flags-t)))
 
-(define-dns-sd-function (%dns-service-reconfirm-record
+(define-dns-sd-function (dns-service-reconfirm-record
                          "DNSServiceReconfirmRecord")
   ((flags flags-t)
    (interface-index :uint32)
