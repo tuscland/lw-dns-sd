@@ -20,33 +20,32 @@
 
 (in-package "COM.WILDORA.DNS-SD")
 
-(declaim (special-dynamic *results-mailbox*))
-
-(defmacro bind-results-mailbox ((mailbox) &body body)
-  `(let ((*results-mailbox* ,mailbox))
-     ,@body))
-
-(defun results-mailbox ()
-  *results-mailbox*)
-
-(defun call-def-operation (service-fn)
-  (unless (boundp '*results-mailbox*)
-    (error "Use BIND-RESULTS-MAILBOX prior to run an operation"))
+(defun call-def-operation (service-fn reply-mailbox reply-object)
   (fli:with-dynamic-foreign-objects ((pointer service-ref))
     (funcall service-fn pointer)
     (dispatch :handle (fli:dereference pointer)
-              :mailbox *results-mailbox*)))
+              :reply-mailbox reply-mailbox
+              :reply-object reply-object)))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun append-key-args (lambda-list args)
+    (append lambda-list
+            (if (member '&key lambda-list)
+                args
+              (list* '&key args)))))
 
 (defmacro def-operation (name lambda-list &body body)
-  `(defun ,name ,lambda-list
-     (call-def-operation (lambda (pointer) ,@body))))
+  `(defun ,name ,(append-key-args lambda-list
+                                  '(reply-mailbox reply-object))
+     (call-def-operation (lambda (pointer) ,@body)
+                         reply-mailbox
+                         reply-object)))
 
 (def-operation register (port type
-                         &key (interface-index +interface-index-any+)
-                              name domain host txt-record no-auto-rename)
+                         &key interface-index name domain host txt-record no-auto-rename)
   (check-type port (integer 0))
   (check-type type string)
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (when name
     (check-type name string)
     (assert (< (length name) +max-service-name-length+)))
@@ -79,8 +78,8 @@
        (make-callback-pointer 'dns-service-register-reply)
        nil))))
 
-(def-operation enumerate-domains (&key (interface-index +interface-index-any+) (domains :browse-domains))
-  (check-type interface-index (integer 0))
+(def-operation enumerate-domains (&key interface-index (domains :browse-domains))
+  (ensure-interface-index interface-index)
   (assert (member domains '(:browse-domains :registration-domains)))
   (let ((flags (cdr (assoc domains *enumerated-domains-flags*))))
     (dns-service-enumerate-domains
@@ -90,9 +89,9 @@
      (make-callback-pointer 'dns-service-enumerate-domains-reply)
      nil)))
 
-(def-operation browse (type &key (interface-index +interface-index-any+) domain) 
+(def-operation browse (type &key interface-index domain) 
   (check-type type string)
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (when domain
     (check-type domain string))
   (dns-service-browse
@@ -104,12 +103,11 @@
    (make-callback-pointer 'dns-service-browse-reply)
    nil))
 
-(def-operation resolve (name type domain
-                        &key (interface-index +interface-index-any+) broadcasting)
+(def-operation resolve (name type domain &key interface-index broadcasting)
   (check-type name string)
   (check-type type string)
   (check-type domain string)
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (when broadcasting
     (assert (eq broadcasting :force-multicast)))
   (dns-service-resolve
@@ -122,9 +120,9 @@
    (make-callback-pointer 'dns-service-resolve-reply)
    nil))
 
-(def-operation get-addr-info (hostname &key (interface-index +interface-index-any+) protocols broadcasting)
+(def-operation get-addr-info (hostname &key interface-index protocols broadcasting)
   (check-type hostname string)
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (when protocols
     (loop :for protocol :in protocols
           :do (assert (member protocol '(:ipv4 :ipv6)))))
@@ -140,10 +138,9 @@
    (make-callback-pointer 'dns-service-get-addr-info-reply)
    nil))
 
-(def-operation query-record (full-name rrtype
-                             &key (interface-index +interface-index-any+) (rrclass :IN) broadcasting)
+(def-operation query-record (full-name rrtype &key interface-index (rrclass :IN) broadcasting)
   (check-type full-name string)
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (unless interface-index
     (setf interface-index +interface-index-any+))
   (when broadcasting
@@ -159,13 +156,12 @@
    nil))
 
 (def-operation nat-port-mapping-create (internal-port
-                                        &key (interface-index +interface-index-any+)
-                                             (external-port 0) protocols (ttl 0))
+                                        &key interface-index (external-port 0) protocols (ttl 0))
   (check-type protocols list)
   (check-type internal-port (integer 0))
   (check-type external-port (integer 0))
   (check-type ttl (integer 0))
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (dns-service-nat-port-mapping-create
    pointer
    0
@@ -186,7 +182,7 @@
 ;;;
 
 (defun register-record (operation full-name rrtype rdata
-                        &key (interface-index +interface-index-any+)
+                        &key interface-index
                              (rrclass :IN) identity (ttl 0))
   (check-type operation operation)
   (assert (member identity '(:shared :unique)))
@@ -194,7 +190,7 @@
   (check-type rdata (array (unsigned-byte 8)))
   (assert (< (length rdata) 65536))
   (check-type ttl integer)
-  (check-type interface-index (integer 0))
+  (ensure-interface-index interface-index)
   (let ((flags (or (when (eq identity :shared) +flag-shared+)
                    (when (eq identity :unique) +flag-unique+))))
     (with-static-array-pointer (rdata-pointer rdata)
@@ -251,8 +247,8 @@
   (setf (fli:pointer-address record-ref) 0))
 
 (defun reconfirm-record (full-name rrtype rdata
-                         &key (interface-index +interface-index-any+) (rrclass :IN) force)
-  (check-type interface-index (integer 0))
+                         &key interface-index (rrclass :IN) force)
+  (ensure-interface-index interface-index)
   (check-type full-name string)
   (check-type rdata (array (unsigned-byte 8)))
   (assert (< (length rdata) 65536))

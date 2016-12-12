@@ -309,3 +309,13 @@
         :do (setf flags (logior flags
                                  (cdr (assoc protocol *protocols-flags*))))
         :finally (return flags)))
+
+;;;
+;;; Validation helpers
+;;;
+
+(defmacro ensure-interface-index (interface-index)
+  `(progn
+     (unless ,interface-index
+       (setf ,interface-index +interface-index-any+))
+     (check-type ,interface-index (integer 0))))

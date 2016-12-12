@@ -15,23 +15,16 @@
 ;;; express or implied.  See the License for the specific language
 ;;; governing permissions and limitations under the License.
 
-;;; Results are events produced by operations.  They are delivered to
-;;; asynchronous operations callbacks or returned from the synchronous
-;;; call OPERATION-NEXT-RESULT.
+;;; Results are events produced by operations.
 
 
 (in-package "COM.WILDORA.DNS-SD")
 
 
 (defclass base-result ()
-  ((operation
-    :reader result-operation
-    :initform (error "OPERATION must be specified")
-    :initarg :operation)
-   (time
+  ((time
     :reader result-time
     :initform (get-universal-time))))
-
 
 (defclass result (base-result)
   ((values

@@ -34,16 +34,18 @@
     :accessor operation-handle
     :initform (error "HANDLE must be specified")
     :initarg :handle)
-   (mailbox
-    :reader operation-mailbox
+   (reply-mailbox
+    :initform (mp:process-mailbox (mp:get-current-process))
+    :initarg :reply-mailbox
+    :reader operation-reply-mailbox)
+   (reply-object
     :initform nil
-    :initarg :mailbox))
+    :initarg :reply-object))
   (:default-initargs
    :direction :input))
 
 (defmethod initialize-instance :after ((self operation) &key handle)
-  (setf (comm:socket-stream-socket self)
-        (dns-service-sockfd handle)))
+  (setf (comm:socket-stream-socket self) (dns-service-sockfd handle)))
 
 (defmethod cancel-operation ((self operation))
   (if (operation-canceled-p self)
@@ -57,17 +59,27 @@
   (fli:null-pointer-p
    (operation-handle self)))
 
-(defmethod enqueue-result ((self operation) class &rest initargs)
-  (mp:mailbox-send (operation-mailbox self)
-                   (apply 'make-instance class
-                          :operation self
-                          initargs)))
+(defun make-event-object (reply-object result)
+  (typecase reply-object
+    (null result)
+    (list (append reply-object (list result)))
+    (t (list reply-object result))))
 
-(declaim (special-dynamic *process-result-operation*))
+(defmethod enqueue-result ((self operation) class &rest initargs)
+  (let ((reply-mailbox (slot-value self 'reply-mailbox)))
+    (if reply-mailbox
+        (mp:mailbox-send reply-mailbox
+                         (make-event-object
+                          (slot-value self 'reply-object)
+                          (apply #'make-instance class initargs)))
+      (warn "Operation ~A has no reply-mailbox" self))))
+
+
+(declaim (special-dynamic *processed-operation*))
 
 (defun reply (error-code more-coming-p &rest result-values)
   (check-error-code error-code)
-  (enqueue-result *process-result-operation* 'result
+  (enqueue-result *processed-operation* 'result
                   :more-coming-p more-coming-p
                   :values result-values))
 
@@ -76,8 +88,7 @@
   (handler-bind ((result-error
                   #'(lambda (condition)
                       (enqueue-result self 'error-result
-                                      :operation self
                                       :underlying-error condition))))
-    (let ((*process-result-operation* self))
+    (let ((*processed-operation* self))
       (dns-service-process-result
        (operation-handle self)))))

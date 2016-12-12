@@ -17,52 +17,55 @@
 
 ;;; High level CLOS API.
 
+
 (in-package "COM.WILDORA.DNS-SD")
 
 (defgeneric start (object))
-(defgeneric in-progress-p (object))
-(defgeneric stop (object)
-  (:method (object)
-   nil))
+(defgeneric stop (object))
+(defgeneric running? (object))
+(defgeneric handle-result (controller result))
+(defgeneric run-operation (controller))
 
+(defun curry (function &rest args)
+  (lambda (&rest more-args)
+    (apply function (append args more-args))))
 
-(defclass object-with-operation ()
+(defun controller-reply (controller result)
+  (handle-result controller result)
+  (funcall (controller-callback controller)
+           controller))
+
+(defclass controller ()
   ((operation
     :initform nil
-    :accessor operation)
+    :reader controller-operation)
+   (last-error
+    :initform nil
+    :accessor controller-last-error)
+   (reply-mailbox
+    :initform (mp:process-mailbox
+               (mp:get-current-process))
+    :initarg :reply-mailbox
+    :accessor controller-reply-mailbox)
    (callback
-    :initform #'do-nothing
+    :initform nil
     :initarg :callback
-    :reader callback)))
+    :accessor controller-callback)))
 
-(defmethod invoke-callback ((self object-with-operation) reason &optional (object self))
-  (funcall (callback self) reason object))
+(defmethod start ((self controller))
+  (with-slots (operation last-error) self
+    (setf last-error nil
+          operation (run-operation self))))
 
-(defmethod report-error ((self object-with-operation) error)
-  (invoke-callback self :error error))
-
-(defmethod wrap-operation-callback ((self object-with-operation) callback)
-  (lambda (operation result)
-    (declare (ignore operation))
-    (typecase result
-      (error
-       (report-error self result))
-      (t
-       (funcall callback self result)))))
-
-(defmethod start :around ((self object-with-operation))
-  (assert (null (operation self)))
-  (setf (operation self)
-        (call-next-method)))
-
-(defmethod in-progress-p ((self object-with-operation))
-  (not (null (operation self))))
-
-(defmethod stop ((self object-with-operation))
+(defmethod stop ((self controller))
   (with-slots (operation) self
-    (when operation
-      (cancel operation)
-      (setf operation nil))))
+    (cancel operation)
+    (setf operation nil)))
+
+(defmethod handle-result ((self controller) (result error-result))
+  (setf (slot-value self 'last-error)
+        (error-result-underlying-error result))
+  (stop self))
 
 
 (defstruct address ()
@@ -71,34 +74,33 @@
   ip
   ttl)
 
-(defclass address-lookup (object-with-operation)
-  ((interface-index
-    :initform (error "INTERFACE-INDEX must be specified.")
-    :initarg :interface-index
-    :accessor address-lookup-interface-index)
-   (hostname
-    :initform (error "HOSTNAME must be specified")
-    :initarg :hostname
-    :accessor address-lookup-hostname)
+(defclass address-lookup (controller)
+  ((service
+    :initform nil
+    :initarg :service
+    :accessor address-lookup-service)
    (addresses
     :initform nil
     :accessor address-lookup-addresses)))
 
-(defmethod start ((self address-lookup))
-  (setf (address-lookup-addresses self) nil)
-  (get-addr-info (address-lookup-hostname self)
-                 :interface-index (address-lookup-interface-index self)
-                 :callback (wrap-operation-callback self #'address-lookup-callback)))
+(defmethod stop :after ((self address-lookup))
+  (setf (address-lookup-addresses self) nil))
 
-(defmethod address-lookup-callback ((self address-lookup) result)
+(defmethod run-operation ((self address-lookup))
+  (let ((service (address-lookup-service self)))
+    (assert (resolved? service))
+    (get-addr-info (service-hostname self)
+                   :interface-index (service-interface-index self)
+                   :reply-mailbox (controller-reply-mailbox self)
+                   :reply-object (curry #'controller-reply self))))
+
+(defmethod handle-result ((self address-lookup) result)
   (when (eq (result-value result :presence) :add)
     (push (make-address :protocol (result-value result :protocol) 
                         :hostname (result-value result :hostname)
                         :ip (result-value result :address)
                         :ttl (result-value result :ttl))
-          (address-lookup-addresses self)))
-  (unless (result-more-coming-p result)
-    (invoke-callback self :change)))
+          (address-lookup-addresses self))))
 
 (defmethod address-lookup-find-address ((self address-lookup) protocol)
   (assert (member protocol '(:ipv4 :ipv6)))
@@ -112,27 +114,17 @@
    (and (null self)
         (null other))))
 
-(defclass base-service ()
-  ((interface-index
-    :initarg :interface-index
-    :accessor service-interface-index)
-   (name
-    :initarg :name
-    :accessor service-name)
-   (type
-    :initarg :type
-    :accessor service-type)
-   (domain
-    :initarg :domain
-    :accessor service-domain)))
+(defstruct service
+  interface-index
+  name
+  type
+  domain
+  full-name
+  hostname
+  port
+  txt-record)
 
-(defmethod start ((self base-service))
-  nil)
-
-(defmethod in-progress-p ((self base-service))
-  nil)
-
-(defmethod service-equal ((self base-service) (other base-service))
+(defmethod service-equal ((self service) (other service))
   ;; FIXME: normally we should not use the interface-index, a service
   ;; should be viewed as the same item on any interface-index.
   (and #+nil
@@ -148,81 +140,76 @@
        (string= (service-domain self)
                 (service-domain other))))
 
-(defmethod print-object ((self base-service) stream)
+(defmethod resolved? ((self service))
+  (not (null (service-hostname self))))
+
+(defmethod print-object ((self service) stream)
   (print-unreadable-object (self stream :type t :identity t)
     (princ (service-name self) stream)))
 
 
-(defclass service (base-service
-                   object-with-operation)
-  ((full-name
+(defclass resolver (controller)
+  ((service
     :initform nil
-    :accessor service-full-name)
-   (hostname
+    :initarg :service
+    :reader resolver-service)
+   (resolved-service
     :initform nil
-    :accessor service-hostname)
-   (port
-    :initform nil
-    :accessor service-port)
-   (txt-record
-    :initform nil
-    :accessor service-txt-record)))
+    :accessor resolver-resolved-service)))
 
-(defmethod start ((self service))
-  (resolve (service-name self)
-           (service-type self)
-           (service-domain self)
-           :interface-index (service-interface-index self)
-           :callback (wrap-operation-callback self #'service-resolve-callback)))
+(defmethod run-operation ((self resolver))
+  (let ((service (resolver-service self)))
+    (resolve (service-name service)
+             (service-type self)
+             (service-domain self)
+             :interface-index (service-interface-index self)
+             :reply-mailbox (controller-reply-mailbox self)
+             :reply-object (curry #'controller-reply self))))
 
-(defmethod service-resolve-callback ((self service) result)
-  (setf (service-full-name self) (result-value result :full-name)
-        (service-hostname self) (result-value result :hostname)
-        (service-port self) (result-value result :port)
-        (service-txt-record self) (result-value result :txt-record))
-  (unless (result-more-coming-p result)
-    (invoke-callback self :change)))
+(defmethod handle-result ((self resolver) result)
+  (let ((service (resolver-service self)))
+    (setf (resolver-resolved-service self)
+          (make-service :interface-index (result-value result :interface-index)
+                        :full-name (result-value result :full-name)
+                        :hostname (result-value result :hostname)
+                        :port (result-value result :port)
+                        :txt-record (result-value result :txt-record)
+                        :name (service-name service)
+                        :type (service-type service)
+                        :domain (service-domain service)))))
 
 
-(defclass browser (object-with-operation)
+(defclass browser (controller)
   ((type
     :initform (error "TYPE must be specified")
     :initarg :type
     :accessor browser-type)
    (services
     :initform nil
-    :accessor browser-services)
-   (service-callback
-    :initform #'do-nothing
-    :initarg :service-callback
-    :reader browser-service-callback)))
+    :accessor browser-services)))
 
-(defmethod start ((self browser))
+(defmethod start :before ((self browser))
+  (setf (browser-services self) nil))
+
+(defmethod run-operation ((self browser))
   (browse (browser-type self)
-          :callback (wrap-operation-callback self #'browser-callback)))
+          :reply-mailbox (controller-reply-mailbox self)
+          :reply-object (curry #'controller-reply self)))
 
-(defun make-service-from-browse-result (browse-result callback)
-  (make-instance 'service
-                 :interface-index (result-value browse-result :interface-index)
-                 :name (result-value browse-result :name)
-                 :type (result-value browse-result :type)
-                 :domain (result-value browse-result :domain)
-                 :callback callback))
+(defun make-service-from-browse-result (browse-result)
+  (make-service :interface-index (result-value browse-result :interface-index)
+                :name (result-value browse-result :name)
+                :type (result-value browse-result :type)
+                :domain (result-value browse-result :domain)))
 
-(defmethod browser-callback ((self browser) result)
+(defmethod handle-result ((self browser) result)
   (ecase (result-value result :presence)
     (:add
-     (push (make-service-from-browse-result result
-                                            (browser-service-callback self))
+     (push (make-service-from-browse-result result)
            (browser-services self)))
     (:remove
-     (let ((service (find-service-from-result result
-                                              (browser-services self))))
-       (removef (browser-services self)
-                service)
-       (stop service))))
-  (unless (result-more-coming-p result)
-    (invoke-callback self :change)))
+     (let ((service (find-service-from-result result (browser-services self))))
+       (removef (browser-services self) service)))))
 
 (defun find-service-from-result (result services)
   (find-if (lambda (service)
@@ -236,7 +223,7 @@
            services))
 
 
-(defclass registration (object-with-operation)
+(defclass registration (controller)
   ((port
     :initform (error "PORT must be specified.")
     :initarg :port
@@ -257,16 +244,19 @@
     :initform nil
     :reader registration-published-p)))
 
-(defmethod start ((self registration))
+(defmethod run-operation ((self registration))
   (with-slots (port type name domain) self
     (register port type
               :name name
               :domain domain
-              :callback (wrap-operation-callback self #'registration-callback))))
+              :reply-mailbox (controller-reply-mailbox self)
+              :reply-object (curry #'controller-reply self))))
 
-(defmethod registration-callback ((self registration) result)
+(defmethod stop :after ((self registration))
+  (setf (slot-value self 'published-p) nil))
+
+(defmethod handle-result ((self registration) result)
   (with-slots (name domain published-p) self
     (setf name (result-value result :name)
           domain (result-value result :domain)
-          published-p (eq (result-value result :presence) :add))
-    (invoke-callback self :change)))
+          published-p (eq (result-value result :presence) :add))))

@@ -26,8 +26,6 @@
 
    ;; Main API
    "DAEMON-VERSION"
-   "BIND-RESULTS-MAILBOX"
-   "RESULTS-MAILBOX"
    "REGISTER"
    "ENUMERATE-DOMAINS"
    "BROWSE"
@@ -44,6 +42,7 @@
    "RECONFIRM-RECORD"
 
    ;; Operations
+   "OPERATION-REPLY-MAILBOX"
    "CANCEL"
 
    ;; Results

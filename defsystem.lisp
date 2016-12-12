@@ -51,7 +51,10 @@
            (:requires
             (:load "foreign")
             (:load "dispatch")
-            (:load "core")))))
+            (:load "core")))
+          (:in-order-to :compile ("high-level")
+            (:requires
+             (:load "api")))))
 
 (defsystem "COM.WILDORA.DNS-SD-TESTS"
   (:default-pathname "tests")

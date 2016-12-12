@@ -50,11 +50,17 @@
 (defun %add-operation (operation)
   (push operation *operations*))
 
+(defun general-invoke-callback (callback)
+  (etypecase callback
+    (function (funcall callback))
+    (list (apply (car callback)
+                 (cdr callback)))))
+
 (defun %remove-operation (operation &optional (removal-callback #'do-nothing))
   (setf *operations*
         (remove operation *operations*))
   (cancel-operation operation)
-  (funcall removal-callback))
+  (general-invoke-callback removal-callback))
 
 (defun dispatch-wait-reason ()
   (format nil "Waiting, ~[no~:;~:*~D~] pending operation~:P"
@@ -106,16 +112,10 @@
                     (timeout *default-timeout*))
   (if callback
       (dispatch-remove-operation operation callback)
-    (let ((finished-waiting nil)
-          (waiting-process (mp:get-current-process)))
-      (dispatch-remove-operation operation
-                                 (lambda ()
-                                   (setf finished-waiting t)
-                                   (mp:process-poke waiting-process)))
-      (unless (mp:process-wait-local-with-timeout "Waiting for operation to be canceled."
-                                                  timeout
-                                                  (lambda () finished-waiting))
-        (error 'timeout-error))))
+    (let ((barrier (mp:make-barrier 2)))
+      (dispatch-remove-operation operation `(mp:barrier-wait ,barrier))
+      (case (mp:barrier-wait barrier :timeout timeout)
+        (:timeout (error 'timeout-error)))))
   (values))
 
 (defun dispatch (&rest operation-initargs)
