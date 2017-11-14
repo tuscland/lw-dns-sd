@@ -114,15 +114,39 @@
    (and (null self)
         (null other))))
 
-(defstruct service
-  interface-index
-  name
-  type
-  domain
-  full-name
-  hostname
-  port
-  txt-record)
+(defclass service ()
+  ((interface-index
+    :initform nil
+    :initarg  :interface-index
+    :accessor service-interface-index)
+   (name
+    :initform nil
+    :initarg  :name
+    :accessor service-name)
+   (type
+    :initform nil
+    :initarg  :type
+    :accessor service-type)
+   (domain
+    :initform nil
+    :initarg  :domain
+    :accessor service-domain)
+   (full-name
+    :initform nil
+    :initarg  :full-name
+    :accessor service-full-name)
+   (hostname
+    :initform nil
+    :initarg  :hostname
+    :accessor service-hostname)
+   (port
+    :initform nil
+    :initarg  :port
+    :accessor service-port)
+   (txt-record
+    :initform nil
+    :initarg  :txt-record
+    :accessor service-txt-record)))
 
 (defmethod service-equal ((self service) (other service))
   ;; FIXME: normally we should not use the interface-index, a service
