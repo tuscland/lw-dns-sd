@@ -201,6 +201,7 @@ Predicate is a function taking one argument RESULT."
                                       :name "Browse Test Service"))
     (bind-result-values (name domain type presence)
         (wait-for-result operation)
+      (declare (ignore presence))
       (run-operation (browse-operation (browse type :domain domain))
         (wait-for-result-until browse-operation (service-presence-matcher :add name))
         (cancel operation)
